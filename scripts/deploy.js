@@ -3,11 +3,13 @@ const { ethers } = require('hardhat');
 
 async function main() {
   const NFTXXX = await ethers.getContractFactory('NFTXXX');
-  const contract = await NFTXXX.deploy('');
+  const contract = await NFTXXX.deploy();
 
   await contract.deployed();
 
   console.log('Contract deployed to:', contract.address);
+
+  // contract.setBaseURI('ipfs://YYY');
 }
 
 main()

@@ -7,9 +7,9 @@ describe('NFT contract', function () {
   let NFT;
   let contract;
   let owner;
-  let addr1;
-  let addr2;
-  let addrs;
+  let user1;
+  let user2;
+  let signers;
 
   let PRICE;
   let MAX_SUPPLY;
@@ -17,7 +17,7 @@ describe('NFT contract', function () {
 
   beforeEach(async function () {
     NFT = await ethers.getContractFactory('NFTXXX');
-    [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
+    [owner, user1, user2, ...signers] = await ethers.getSigners();
 
     contract = await NFT.deploy();
 
@@ -35,12 +35,12 @@ describe('NFT contract', function () {
 
   describe('Owner', function () {
     it('Correct function access rights', async function () {
-      await expect(contract.connect(addr1).setSaleState(true)).to.be.revertedWith('Ownable: caller is not the owner');
-      await expect(contract.connect(addr1).setSaleState(false)).to.be.revertedWith('Ownable: caller is not the owner');
-      await expect(contract.connect(addr1).withdraw()).to.be.revertedWith('Ownable: caller is not the owner');
+      await expect(contract.connect(user1).setSaleState(true)).to.be.revertedWith('Ownable: caller is not the owner');
+      await expect(contract.connect(user1).setSaleState(false)).to.be.revertedWith('Ownable: caller is not the owner');
+      await expect(contract.connect(user1).withdraw()).to.be.revertedWith('Ownable: caller is not the owner');
 
-      await expect(contract.connect(addr1).setBaseURI('')).to.be.revertedWith('Ownable: caller is not the owner');
-      await expect(contract.connect(addr1).giveAway(addr2.address, 0)).to.be.revertedWith(
+      await expect(contract.connect(user1).setBaseURI('')).to.be.revertedWith('Ownable: caller is not the owner');
+      await expect(contract.connect(user1).giveAway(addr2.address, 1)).to.be.revertedWith(
         'Ownable: caller is not the owner'
       );
 
@@ -49,7 +49,9 @@ describe('NFT contract', function () {
       await contract.withdraw();
 
       await contract.setBaseURI('');
-      await contract.giveAway(addr1.address, 0);
+      await contract.giveAway([user1.address]);
+      await contract.whitelist([user1.address]);
+      await contract.giveAway(addr1.address, 1);
     });
   });
 
@@ -57,16 +59,23 @@ describe('NFT contract', function () {
     it('Correct sale logic and minting ability', async function () {
       // sale disabled
       await expect(contract.mint(1)).to.be.revertedWith('Sale is not active');
-      await expect(contract.connect(addr1).mint(1)).to.be.revertedWith('Sale is not active');
+      await expect(contract.connect(user1).mint(1)).to.be.revertedWith('Sale is not active');
 
       // start sale
       await contract.setSaleState(true);
       expect(await contract.isActive()).to.equal(true);
 
       await contract.mint(1, { value: PRICE });
-      await contract.connect(addr1).mint(3, { value: PRICE.mul(BigNumber.from('3')) });
+      await contract.giveAway(user1, 2);
+      await contract.connect(user2).mint(3, { value: PRICE.mul(BigNumber.from('3')) });
 
-      expect(await contract.ownerOf(2)).to.equal(addr1.address);
+      expect(await contract.ownerOf(0)).to.equal(owner.address);
+      expect(await contract.ownerOf(1)).to.equal(user1.address);
+      expect(await contract.ownerOf(2)).to.equal(user1.address);
+      expect(await contract.ownerOf(3)).to.equal(user2.address);
+      expect(await contract.ownerOf(4)).to.equal(user2.address);
+      expect(await contract.ownerOf(5)).to.equal(user2.address);
+
 
       // stop sale
       await contract.setSaleState(false);
@@ -81,22 +90,30 @@ describe('NFT contract', function () {
       await contract.mint(1, { value: PRICE.mul(BigNumber.from('1')) });
     });
 
-    it('Should cost 0.03 eth per mint and have a maximum mint of 10 per transaction', async function () {
+    it('Should have correct cost for minting', async function () {
       await contract.setSaleState(true);
 
       for (const amount of [0, 2, PURCHASE_LIMIT]) {
-        const addr1Bal = await provider.getBalance(addr1.address);
+        const addr1Bal = await provider.getBalance(user1.address);
         const txValue = PRICE.mul(BigNumber.from(amount));
         const tx = await contract.connect(addr1).mint(amount, { value: txValue });
         const receipt = await tx.wait();
         const txGasValue = receipt.cumulativeGasUsed.mul(receipt.effectiveGasPrice);
-        const effectivePaidValue = addr1Bal.sub(await provider.getBalance(addr1.address)).sub(txGasValue);
+        const effectivePaidValue = addr1Bal.sub(await provider.getBalance(user1.address)).sub(txGasValue);
 
         expect(effectivePaidValue).to.equal(txValue);
       }
 
       await expect(contract.mint(PURCHASE_LIMIT + 1)).to.be.revertedWith('Exceeds purchase limit');
     });
+
+    // it('Should implement correct whitelist logic', async () => {
+    //   await contract.whitelist([user1.address, user2.address]);
+    //   await contract.connect(user1).whitelistMint({ value: PRICE });
+    //   await expect(contract.connect(user1).whitelistMint({ value: PRICE })).to.be.revertedWith(
+    //     'Caller not whitelisted'
+    //   );
+    // });
 
     it('Correct total mintable supply and refund logic implemented', async function () {
       this.timeout(0);
@@ -136,7 +153,6 @@ describe('NFT contract', function () {
       // this shouldn't affect logic
       await contract.setSaleState(true);
       await contract.mint(PURCHASE_LIMIT, { value: PRICE.mul(PURCHASE_LIMIT) });
-      //
 
       await contract.giveAway(addr1.address, reserveSupply - amount);
 
@@ -155,5 +171,6 @@ describe('NFT contract', function () {
 
       expect(await contract.totalSupply()).to.equal(MAX_SUPPLY);
     });
+  });
   });
 });
