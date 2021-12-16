@@ -29,7 +29,7 @@ describe('NFT contract', function () {
   describe('Deployment', function () {
     it('Should set the right owner and pause sale', async function () {
       expect(await contract.owner()).to.equal(owner.address);
-      expect(await contract.isActive()).to.equal(false);
+      expect(await contract.publicSaleActive()).to.equal(false);
     });
   });
 
@@ -63,7 +63,7 @@ describe('NFT contract', function () {
 
       // start sale
       await contract.setSaleState(true);
-      expect(await contract.isActive()).to.equal(true);
+      expect(await contract.publicSaleActive()).to.equal(true);
 
       await contract.mint(1, { value: PRICE });
       await contract.giveAway(user1, 2);
@@ -79,13 +79,13 @@ describe('NFT contract', function () {
 
       // stop sale
       await contract.setSaleState(false);
-      expect(await contract.isActive()).to.equal(false);
+      expect(await contract.publicSaleActive()).to.equal(false);
 
       await expect(contract.mint(1)).to.be.revertedWith('Sale is not active');
 
       // start sale
       await contract.setSaleState(true);
-      expect(await contract.isActive()).to.equal(true);
+      expect(await contract.publicSaleActive()).to.equal(true);
 
       await contract.mint(1, { value: PRICE.mul(BigNumber.from('1')) });
     });

@@ -13,12 +13,12 @@ contract NFTXXX is ERC721Enumerable, Ownable {
     using ECDSA for bytes32;
     using Strings for uint256;
 
-    event StateUpdate(bool isActive);
+    event StateUpdate(bool publicSaleActive);
 
     string public unrevealedURI = "ipfs://XXX";
     string public baseURI;
 
-    bool public isActive;
+    bool public publicSaleActive;
 
     uint256 public constant PRICE = 0.03 ether;
     uint256 public constant PURCHASE_LIMIT = 10;
@@ -73,7 +73,7 @@ contract NFTXXX is ERC721Enumerable, Ownable {
     // ------------- Modifier -------------
 
     modifier onlyWhenActive() {
-        require(isActive, "Sale is not active");
+        require(publicSaleActive, "Sale is not active");
         _;
     }
 
@@ -101,7 +101,7 @@ contract NFTXXX is ERC721Enumerable, Ownable {
     // ------------- Admin -------------
 
     function setSaleState(bool active) external onlyOwner {
-        isActive = active;
+        publicSaleActive = active;
         emit StateUpdate(active);
     }
 
