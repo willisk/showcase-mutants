@@ -9,22 +9,11 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "./NFT.sol";
 import "./Serum.sol";
 
-//      |||||\          |||||\               |||||\           |||||\
-//      ||||| |         ||||| |              ||||| |          ||||| |
-//       \__|||||\  |||||\___\|               \__|||||\   |||||\___\|
-//          ||||| | ||||| |                      ||||| |  ||||| |
-//           \__|||||\___\|       Y u g a         \__|||||\___\|
-//              ||||| |             L a b s          ||||| |
-//          |||||\___\|                          |||||\___\|
-//          ||||| |                              ||||| |
-//           \__|||||||||||\                      \__|||||||||||\
-//              ||||||||||| |                        ||||||||||| |
-//               \_________\|                         \_________\|
-
-contract MutantApeYachtClub is ERC721Enumerable, Ownable, ReentrancyGuard {
+contract Mutants is ERC721Enumerable, Ownable, ReentrancyGuard {
     // Provenance hash for all mutants (Minted, Mutated Ape, MEGA)
-    string public constant MAYC_PROVENANCE = "ca7151cc436da0dc3a3d662694f8c9da5ae39a7355fabaafc00e6aa580927175";
-    
+    string public constant MAYC_PROVENANCE =
+        "ca7151cc436da0dc3a3d662694f8c9da5ae39a7355fabaafc00e6aa580927175";
+
     // IDs 0 - 9999: Minted Mutants
     // IDs 10000 - 29999: Mutated Apes
     // IDs 30000 - 3007: MEGA Mutants
@@ -66,7 +55,7 @@ contract MutantApeYachtClub is ERC721Enumerable, Ownable, ReentrancyGuard {
     mapping(uint256 => uint256) private megaMutationIdsByApe;
 
     string private baseURI;
-    NFTXXX private immutable bayc;
+    NFT private immutable bayc;
     Serum private immutable bacc;
 
     event MutantPublicSaleStart(
@@ -105,7 +94,7 @@ contract MutantApeYachtClub is ERC721Enumerable, Ownable, ReentrancyGuard {
         address baycAddress,
         address baccAddress
     ) ERC721(name, symbol) {
-        bayc = NFTXXX(baycAddress);
+        bayc = NFT(baycAddress);
         bacc = Serum(baccAddress);
     }
 
@@ -178,7 +167,7 @@ contract MutantApeYachtClub is ERC721Enumerable, Ownable, ReentrancyGuard {
 
         uint256 costToMint = getMintPrice() * numMutants;
         require(costToMint <= msg.value, "Ether value sent is not correct");
-        
+
         if (mintedMutantsStartingIndex == 0) {
             collectionStartingIndexBlock = block.number;
         }
@@ -195,7 +184,7 @@ contract MutantApeYachtClub is ERC721Enumerable, Ownable, ReentrancyGuard {
             Address.sendValue(payable(msg.sender), msg.value - costToMint);
         }
     }
-    
+
     function mutateApeWithSerum(uint256 serumTypeId, uint256 apeId)
         external
         nonReentrant
@@ -314,7 +303,7 @@ contract MutantApeYachtClub is ERC721Enumerable, Ownable, ReentrancyGuard {
     {
         return uint256(blockhash(blockNumber)) % collectionSize;
     }
-    
+
     function setStartingIndices() external startingIndicesNotSet {
         require(
             collectionStartingIndexBlock != 0,
@@ -335,7 +324,7 @@ contract MutantApeYachtClub is ERC721Enumerable, Ownable, ReentrancyGuard {
             collectionStartingIndexBlock,
             NUM_MEGA_MUTANTS
         );
-        
+
         if ((block.number - collectionStartingIndexBlock) > 255) {
             mintedMutantsStartingIndex = calculateStartingIndex(
                 block.number - 1,

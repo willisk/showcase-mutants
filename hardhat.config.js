@@ -1,5 +1,6 @@
 require('@nomiclabs/hardhat-waffle');
 require('@nomiclabs/hardhat-etherscan');
+require('hardhat-gas-reporter');
 require('dotenv').config();
 
 // This is a sample Hardhat task. To learn how to create your own go to
@@ -21,6 +22,15 @@ task('accounts', 'Prints the list of accounts', async (taskArgs, hre) => {
 module.exports = {
   solidity: {
     compilers: [
+      {
+        version: '0.8.10',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 10000,
+          },
+        },
+      },
       {
         version: '0.8.4',
         settings: {
@@ -58,5 +68,11 @@ module.exports = {
     // apiKey: process.env.ETHERSCAN_KEY,
     apiKey: process.env.BSCSCAN_KEY,
     // apiKey: process.env.SNOWTRACE_KEY,
+  },
+  gasReporter: {
+    enabled: true,
+    currency: 'USD',
+    gasPrice: 100,
+    coinmarketcap: '62e54920-2a0e-4644-a32b-59e48dc999ac',
   },
 };
