@@ -60,6 +60,14 @@ module.exports = {
       url: process.env.PROVIDER_BSC_TEST,
       accounts: [process.env.PRIVATE_KEY],
     },
+    polygon: {
+      url: process.env.PROVIDER_POLYGON,
+      accounts: [process.env.PRIVATE_KEY],
+    },
+    mumbai: {
+      url: process.env.PROVIDER_MUMBAI,
+      accounts: [process.env.PRIVATE_KEY],
+    },
   },
   mocha: {
     timeout: 0,
@@ -68,6 +76,7 @@ module.exports = {
     // apiKey: process.env.ETHERSCAN_KEY,
     apiKey: process.env.BSCSCAN_KEY,
     // apiKey: process.env.SNOWTRACE_KEY,
+    // apiKey: process.env.POLYGONSCAN_KEY,
   },
   gasReporter: {
     enabled: true,
