@@ -1,6 +1,27 @@
 // SPDX-License-Identifier: BSD-3-Clause
-
 pragma solidity ^0.8.0;
+
+//   _____     _____       ____  _            _         ▗█▘ ▟▛
+//  |_   _|__ |  ___|   _ | __ )| | ___   ___| | __    ▗▛▘ ▟▛
+//    | |/ _ \| |_ | | | ||  _ \| |/ _ \ / __| |/ /   ▗▛  ▟▀
+//    | | (_) |  _|| |_| || |_) | | (_) | (__|   <   ▗▛  ▟▘
+//    |_|\___/|_|   \__,_||____/|_|\___/ \___|_|\_\
+//                                  ▄▄▄▄▄▄
+//                             ▟▀▀▀▀     ▝▀▀▀▀▀▀▀▀█▖
+//                           ▗▛                  ▟▘▌
+//                          ▄▛ ▗▄▄▄▄▄▄▄▄▄▄▄▄▄▄ ▗▛  ▌
+//                         ▐▛▀▀▀   ▗     ▖   ▝▀▜   ▌
+//                         ▐   ▗▖          ▄   ▐   ▌
+//                         ▐    ▀▀▀▀▀▀▀▀▀▀▀▘   ▐   ▛▀▀▀▀█
+//                        ▗█                   ▐  ▗▌   ▟▘
+//                       ▟▀▐                   ▐  ▟   ▐▘
+//                      ▟▘ ▐▖                  ▛▗▞   ▗▌
+//                     ▟▘   ▙▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▟▀▀▀▀   ▗▛
+//                    ▟▘                           ▗▛
+//                   ▟▙▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▛
+//
+// original author: Squeebo
+// additions: ToFuBlock
 
 import '@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol';
 import '@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol';
@@ -9,14 +30,6 @@ import '@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol';
 import '@openzeppelin/contracts/utils/Context.sol';
 import '@openzeppelin/contracts/utils/Address.sol';
 import '@openzeppelin/contracts/utils/Strings.sol';
-
-/********************
- * @author: Squeebo *
- ********************/
-
-/*
- *  additions: phaze.eth
- */
 
 abstract contract ERC721X is Context, ERC165, IERC721, IERC721Metadata {
     using Address for address;
@@ -53,6 +66,22 @@ abstract contract ERC721X is Context, ERC165, IERC721, IERC721Metadata {
     }
 
     /**
+     * @dev See {IERC721-balanceOf}.
+     */
+    function balanceOf(address owner) public view virtual override returns (uint256) {
+        require(owner != address(0), 'ERC721: balance query for the zero address');
+
+        uint256 count;
+        for (uint256 i; i < _owners.length; ++i) {
+            if (owner == _owners[i]) {
+                ++count;
+            }
+        }
+
+        return count;
+    }
+
+    /**
      * @dev Gets all token IDs for a particular user. This is a very inefficient implementation, requiring two loops over the whole owners array.
      * Could probably be implemented more efficiently with linked-lists.
      */
@@ -71,27 +100,11 @@ abstract contract ERC721X is Context, ERC165, IERC721, IERC721Metadata {
     }
 
     /**
-     * @dev See {IERC721-balanceOf}.
-     */
-    function balanceOf(address owner) public view virtual override returns (uint256) {
-        require(owner != address(0), 'ERC721: balance query for the zero address');
-
-        uint256 count;
-        for (uint256 i; i < _owners.length; ++i) {
-            if (owner == _owners[i]) {
-                ++count;
-            }
-        }
-
-        return count;
-    }
-
-    /**
      * @dev See {IERC721-ownerOf}.
      */
     function ownerOf(uint256 tokenId) public view virtual override returns (address) {
+        require(_exists(tokenId), 'ERC721: owner query for nonexistent token');
         address owner = _owners[tokenId];
-        require(owner != address(0), 'ERC721: owner query for nonexistent token');
         return owner;
     }
 
@@ -244,10 +257,10 @@ abstract contract ERC721X is Context, ERC165, IERC721, IERC721Metadata {
     /**
      * @dev Returns number of minted ids.
      *
-     * WARNING: Does not account for burned token ids.
+     * NOTE: Does not account for burned token ids.
      *
      */
-    function totalSupply() internal view returns (uint256) {
+    function totalSupply() public view returns (uint256) {
         return _owners.length;
     }
 
