@@ -3,12 +3,12 @@ pragma solidity 0.8.10;
 
 // import "hardhat/console.sol";
 
-import './ERC721B.sol';
+import './ERC721X.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/utils/cryptography/ECDSA.sol';
 
-contract NFT is ERC721B, Ownable {
+contract NFT is ERC721X, Ownable {
     using ECDSA for bytes32;
     using Strings for uint256;
 
@@ -38,7 +38,7 @@ contract NFT is ERC721B, Ownable {
     mapping(address => bool) private _whitelistUsed;
     mapping(address => bool) private _diamondlistUsed;
 
-    constructor() ERC721B('MyNFTXXX', 'NFTXXX') {}
+    constructor() ERC721X('MyNFTXXX', 'NFTXXX') {}
 
     // ------------- User Api -------------
 
@@ -46,25 +46,22 @@ contract NFT is ERC721B, Ownable {
         require(amount <= PURCHASE_LIMIT, 'EXCEEDS_LIMIT');
         require(msg.value == PRICE * amount, 'INCORRECT_VALUE');
 
-        uint256 tokenId = totalSupply();
-        require(tokenId + amount - 1 < MAX_SUPPLY, 'MAX_SUPPLY_REACHED');
+        require(totalSupply() + amount < MAX_SUPPLY, 'MAX_SUPPLY_REACHED');
 
-        for (uint256 i; i < amount; i++) _mint(tokenId + i);
+        for (uint256 i; i < amount; i++) _mintNextIdForSender();
     }
 
     function whitelistMint(uint256 amount, bytes memory signature) external payable onlyPresale onlyWhitelisted(signature) onlyHuman {
         require(amount <= WHITELIST_PURCHASE_LIMIT, 'EXCEEDS_LIMIT');
         require(msg.value == WHITELIST_PRICE * amount, 'INCORRECT_VALUE');
 
-        uint256 tokenId = totalSupply();
-        require(tokenId + amount < MAX_SUPPLY, 'MAX_SUPPLY_REACHED');
-        for (uint256 i; i < amount; i++) _mint(tokenId + i);
+        require(totalSupply() + amount < MAX_SUPPLY, 'MAX_SUPPLY_REACHED');
+        for (uint256 i; i < amount; i++) _mintNextIdForSender();
     }
 
     function diamondMint(bytes memory signature) external payable onlyInitialPhase onlyDiamondlisted(signature) onlyHuman {
-        uint256 tokenId = totalSupply();
-        require(tokenId < MAX_SUPPLY, 'MAX_SUPPLY_REACHED');
-        _mint(tokenId);
+        require(totalSupply() < MAX_SUPPLY, 'MAX_SUPPLY_REACHED');
+        _mintNextIdForSender();
     }
 
     // ------------- Admin -------------
@@ -102,7 +99,7 @@ contract NFT is ERC721B, Ownable {
     function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
         require(_exists(tokenId), 'ERC721Metadata: URI query for nonexistent token');
 
-        return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, '/', tokenId.toString(), '.json')) : unrevealedURI;
+        return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, tokenId.toString(), '.json')) : unrevealedURI;
     }
 
     function presaleActive() external view returns (bool) {
@@ -115,9 +112,9 @@ contract NFT is ERC721B, Ownable {
 
     // ------------- Internal -------------
 
-    function _mint(uint256 tokenId) internal {
+    function _mintNextIdForSender() internal {
         _owners.push(msg.sender);
-        emit Transfer(address(0), msg.sender, tokenId);
+        emit Transfer(address(0), msg.sender, totalSupply());
     }
 
     // ------------- Modifier -------------
