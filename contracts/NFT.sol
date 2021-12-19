@@ -20,12 +20,12 @@ contract NFT is ERC721B, Ownable {
 
     event PhaseUpdate(PHASE phase);
 
-    string public unrevealedURI = 'ipfs://XXX';
-    string public baseURI;
-
     PHASE public phase;
 
     address private _signerAddress = 0x68442589f40E8Fc3a9679dE62884c85C6E524888;
+
+    string public unrevealedURI = 'ipfs://XXX';
+    string public baseURI;
 
     uint256 public constant MAX_SUPPLY = 500;
 
@@ -38,9 +38,7 @@ contract NFT is ERC721B, Ownable {
     mapping(address => bool) private _whitelistUsed;
     mapping(address => bool) private _diamondlistUsed;
 
-    constructor() ERC721B('MyNFTXXX', 'NFTXXX') {
-        // _mint(0); // XXX: remove this!!!!!!! only useful for gas estimation tests
-    }
+    constructor() ERC721B('MyNFTXXX', 'NFTXXX') {}
 
     // ------------- User Api -------------
 
@@ -49,7 +47,7 @@ contract NFT is ERC721B, Ownable {
         require(msg.value == PRICE * amount, 'INCORRECT_VALUE');
 
         uint256 tokenId = totalSupply();
-        require(tokenId + amount < MAX_SUPPLY, 'MAX_SUPPLY_REACHED');
+        require(tokenId + amount - 1 < MAX_SUPPLY, 'MAX_SUPPLY_REACHED');
 
         for (uint256 i; i < amount; i++) _mint(tokenId + i);
     }
@@ -67,32 +65,6 @@ contract NFT is ERC721B, Ownable {
         uint256 tokenId = totalSupply();
         require(tokenId < MAX_SUPPLY, 'MAX_SUPPLY_REACHED');
         _mint(tokenId);
-    }
-
-    // ------------- Internal -------------
-
-    function _mint(uint256 tokenId) internal {
-        _owners.push(msg.sender);
-        emit Transfer(address(0), msg.sender, tokenId);
-    }
-
-    // await signer.signMessage(_ethers.utils.arrayify(_ethers.utils.keccak256(_ethers.utils.defaultAbiCoder.encode(['address', 'address'], ['<contract>', '<user>']))))
-    modifier onlyDiamondlisted(bytes memory signature) {
-        bytes32 msgHash = keccak256(abi.encode(address(this), PHASE.INITIAL, msg.sender));
-        address signer = msgHash.toEthSignedMessageHash().recover(signature);
-        require(signer == _signerAddress, 'NOT_WHITELISTED');
-        require(!_diamondlistUsed[msg.sender], 'WHITELIST_USED');
-        _diamondlistUsed[msg.sender] = true;
-        _;
-    }
-
-    modifier onlyWhitelisted(bytes memory signature) {
-        bytes32 msgHash = keccak256(abi.encode(address(this), PHASE.PRESALE, msg.sender));
-        address signer = msgHash.toEthSignedMessageHash().recover(signature);
-        require(signer == _signerAddress, 'NOT_WHITELISTED');
-        require(!_whitelistUsed[msg.sender], 'WHITELIST_USED');
-        _whitelistUsed[msg.sender] = true;
-        _;
     }
 
     // ------------- Admin -------------
@@ -133,6 +105,21 @@ contract NFT is ERC721B, Ownable {
         return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, '/', tokenId.toString(), '.json')) : unrevealedURI;
     }
 
+    function presaleActive() external view returns (bool) {
+        return phase == PHASE.PRESALE;
+    }
+
+    function publicSaleActive() external view returns (bool) {
+        return phase == PHASE.PUBLIC;
+    }
+
+    // ------------- Internal -------------
+
+    function _mint(uint256 tokenId) internal {
+        _owners.push(msg.sender);
+        emit Transfer(address(0), msg.sender, tokenId);
+    }
+
     // ------------- Modifier -------------
 
     modifier onlyInitialPhase() {
@@ -152,6 +139,25 @@ contract NFT is ERC721B, Ownable {
 
     modifier onlyHuman() {
         require(tx.origin == msg.sender, 'CONTRACT_CALL');
+        _;
+    }
+
+    // await signer.signMessage(_ethers.utils.arrayify(_ethers.utils.keccak256(_ethers.utils.defaultAbiCoder.encode(['address', 'address'], ['<contract>', '<user>']))))
+    modifier onlyDiamondlisted(bytes memory signature) {
+        bytes32 msgHash = keccak256(abi.encode(address(this), PHASE.INITIAL, msg.sender));
+        address signer = msgHash.toEthSignedMessageHash().recover(signature);
+        require(signer == _signerAddress, 'NOT_WHITELISTED');
+        require(!_diamondlistUsed[msg.sender], 'WHITELIST_USED');
+        _diamondlistUsed[msg.sender] = true;
+        _;
+    }
+
+    modifier onlyWhitelisted(bytes memory signature) {
+        bytes32 msgHash = keccak256(abi.encode(address(this), PHASE.PRESALE, msg.sender));
+        address signer = msgHash.toEthSignedMessageHash().recover(signature);
+        require(signer == _signerAddress, 'NOT_WHITELISTED');
+        require(!_whitelistUsed[msg.sender], 'WHITELIST_USED');
+        _whitelistUsed[msg.sender] = true;
         _;
     }
 }

@@ -4,6 +4,8 @@ coverage
 coverage.json
 typechain
 !.env.example
+!.prettierrc
+tmp
 
 #Hardhat files
 cache

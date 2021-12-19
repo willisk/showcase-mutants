@@ -1,6 +1,8 @@
 const { expect } = require('chai');
 const { BigNumber } = require('ethers');
 
+const BN = BigNumber.from;
+
 provider = ethers.provider;
 
 describe('NFT contract', function () {
@@ -35,138 +37,96 @@ describe('NFT contract', function () {
 
   describe('Owner', function () {
     it('Correct function access rights', async function () {
-      await expect(contract.connect(user1).setSaleState(true)).to.be.revertedWith('Ownable: caller is not the owner');
-      await expect(contract.connect(user1).setSaleState(false)).to.be.revertedWith('Ownable: caller is not the owner');
+      await expect(contract.connect(user1).setSalePhase(0)).to.be.revertedWith('Ownable: caller is not the owner');
       await expect(contract.connect(user1).withdraw()).to.be.revertedWith('Ownable: caller is not the owner');
-
       await expect(contract.connect(user1).setBaseURI('')).to.be.revertedWith('Ownable: caller is not the owner');
-      await expect(contract.connect(user1).giveAway(user2.address, 1)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
-      );
+      // await expect(contract.connect(user1).giveAway(user2.address, 1)).to.be.revertedWith(
+      //   'Ownable: caller is not the owner'
+      // );
 
-      await contract.setSaleState(true);
-      await contract.setSaleState(false);
+      await contract.setSalePhase(1);
       await contract.withdraw();
-
       await contract.setBaseURI('');
-      await contract.giveAway(user1.address, 1);
     });
   });
 
-  describe('Minting', function () {
-    it('Correct sale logic and minting ability', async function () {
-      // sale disabled
-      await expect(contract.mint(1)).to.be.revertedWith('Sale is not active');
-      await expect(contract.connect(user1).mint(1)).to.be.revertedWith('Sale is not active');
-
-      // start sale
-      await contract.setSaleState(true);
+  describe('Public Mint', function () {
+    beforeEach(async function () {
+      await contract.setSalePhase(2);
       expect(await contract.publicSaleActive()).to.equal(true);
-
-      await contract.mint(1, { value: PRICE });
-      await contract.giveAway(user1.address, 2);
-      await contract.connect(user2).mint(1, { value: PRICE.mul(BigNumber.from('1')) });
-
-      // expect(await contract.ownerOf(0)).to.equal(owner.address);
-      // expect(await contract.ownerOf(1)).to.equal(user1.address);
-      // expect(await contract.ownerOf(2)).to.equal(user1.address);
-      // expect(await contract.ownerOf(3)).to.equal(user2.address);
-      // expect(await contract.ownerOf(4)).to.equal(user2.address);
-      // expect(await contract.ownerOf(5)).to.equal(user2.address);
-
-      // // stop sale
-      // await contract.setSaleState(false);
-      // expect(await contract.publicSaleActive()).to.equal(false);
-
-      // await expect(contract.mint(1)).to.be.revertedWith('Sale is not active');
-
-      // // start sale
-      // await contract.setSaleState(true);
-      // expect(await contract.publicSaleActive()).to.equal(true);
-
-      // await contract.mint(1, { value: PRICE.mul(BigNumber.from('1')) });
     });
 
-    // it('Should have correct cost for minting', async function () {
-    //   await contract.setSaleState(true);
+    it('Correct sale logic and minting ability', async function () {
+      await contract.mint(1, { value: PRICE });
+      await contract.connect(user2).mint(2, { value: PRICE.mul(BigNumber.from('2')) });
+      await expect(contract.mint(PURCHASE_LIMIT + 1)).to.be.revertedWith('EXCEEDS_LIMIT');
 
-    //   for (const amount of [0, 2, PURCHASE_LIMIT]) {
-    //     const user1Bal = await provider.getBalance(user1.address);
-    //     const txValue = PRICE.mul(BigNumber.from(amount));
-    //     const tx = await contract.connect(user1).mint(amount, { value: txValue });
-    //     const receipt = await tx.wait();
-    //     const txGasValue = receipt.cumulativeGasUsed.mul(receipt.effectiveGasPrice);
-    //     const effectivePaidValue = user1Bal.sub(await provider.getBalance(user1.address)).sub(txGasValue);
+      expect(await contract.ownerOf(0)).to.equal(owner.address);
+      expect(await contract.ownerOf(1)).to.equal(user2.address);
+      expect(await contract.ownerOf(2)).to.equal(user2.address);
 
-    //     expect(effectivePaidValue).to.equal(txValue);
-    //   }
+      // stop sale
+      await contract.setSalePhase(0);
+      expect(await contract.publicSaleActive()).to.equal(false);
 
-    //   await expect(contract.mint(PURCHASE_LIMIT + 1)).to.be.revertedWith('Exceeds purchase limit');
-    // });
-
-    // // it('Should implement correct whitelist logic', async () => {
-    // //   await contract.whitelist([user1.address, user2.address]);
-    // //   await contract.connect(user1).whitelistMint({ value: PRICE });
-    // //   await expect(contract.connect(user1).whitelistMint({ value: PRICE })).to.be.revertedWith(
-    // //     'Caller not whitelisted'
-    // //   );
-    // // });
+      await expect(contract.mint(1)).to.be.revertedWith('PUBLIC_SALE_NOT_ACTIVE');
+      await expect(contract.connect(user1).mint(1)).to.be.revertedWith('PUBLIC_SALE_NOT_ACTIVE');
+    });
 
     // it('Correct total mintable supply and refund logic implemented', async function () {
     //   this.timeout(0);
 
-    //   await contract.setSaleState(true);
-
-    //   let reserveSupply = await contract.reserveSupply();
-
     //   // mint all
-    //   for (let i = 0; i < MAX_SUPPLY - reserveSupply - 1; i++) await contract.mint(1, { value: PRICE });
+    //   let tx;
+    //   for (let i = 0; i < MAX_SUPPLY; i++) tx = await contract.mint(1, { value: PRICE });
+    //   await tx.wait();
 
-    //   // test refund logic; minting 3 with only 1 left
-    //   const amount = 3;
-    //   const user1Bal = await provider.getBalance(user1.address);
-    //   const txValue = PRICE.mul(BigNumber.from(amount));
-    //   const tx = await contract.connect(user1).mint(amount, { value: txValue });
-    //   const receipt = await tx.wait();
-    //   const txGasValue = receipt.cumulativeGasUsed.mul(receipt.effectiveGasPrice);
-    //   const effectivePaidValue = user1Bal.sub(await provider.getBalance(user1.address)).sub(txGasValue);
-    //   expect(effectivePaidValue).to.equal(PRICE);
-
-    //   // none should be left
-    //   await expect(contract.mint(1, { value: PRICE })).to.be.revertedWith('No supply left');
-
-    //   await tx;
-    //   expect(MAX_SUPPLY.sub(await contract.totalSupply())).to.equal(reserveSupply);
+    //   await expect(contract.mint(1, { value: PRICE })).to.be.revertedWith('MAX_SUPPLY_REACHED');
     // });
+  });
 
-    // it('Correct reserve supply handling', async function () {
-    //   let reserveSupply = await contract.reserveSupply();
+  describe('Whitelist', function () {
+    beforeEach(async function () {
+      await contract.setSignerAddress(owner.address);
+      await contract.setSalePhase(0);
+    });
 
-    //   let amount = '5';
-    //   await contract.giveAway(user1.address, amount);
+    it('Correct whitelist guard', async function () {
+      const signedMsgPhase0 = await owner.signMessage(
+        ethers.utils.arrayify(
+          ethers.utils.keccak256(
+            ethers.utils.defaultAbiCoder.encode(['address', 'uint8', 'address'], [contract.address, 0, user1.address])
+          )
+        )
+      );
 
-    //   expect(await contract.reserveSupply()).to.equal(reserveSupply.sub(BigNumber.from(amount)));
+      // signed for incorrect address
+      await expect(contract.diamondMint(signedMsgPhase0)).to.be.revertedWith('NOT_WHITELISTED');
 
-    //   // this shouldn't affect logic
-    //   await contract.setSaleState(true);
-    //   await contract.mint(PURCHASE_LIMIT, { value: PRICE.mul(PURCHASE_LIMIT) });
+      await contract.connect(user1).diamondMint(signedMsgPhase0);
+      await expect(contract.connect(user1).diamondMint(signedMsgPhase0)).to.be.revertedWith('WHITELIST_USED');
 
-    //   await contract.giveAway(user1.address, reserveSupply - amount);
+      const signedMsgPhase1 = await owner.signMessage(
+        ethers.utils.arrayify(
+          ethers.utils.keccak256(
+            ethers.utils.defaultAbiCoder.encode(['address', 'uint8', 'address'], [contract.address, 1, user1.address])
+          )
+        )
+      );
 
-    //   expect(await contract.reserveSupply()).to.equal(BigNumber.from('0'));
-    //   await expect(contract.giveAway(user1.address, 1)).to.be.revertedWith('Exceeds reserved supply');
-    // });
+      await contract.setSalePhase(1);
 
-    // it('Correct maximum total supply', async function () {
-    //   await contract.setSaleState(true);
+      // using incorrect phase0 signed message
+      await expect(contract.connect(user1).whitelistMint(1, signedMsgPhase0, { value: PRICE })).to.be.revertedWith(
+        'NOT_WHITELISTED'
+      );
+      // correct phase, incorrect user address
+      await expect(contract.whitelistMint(1, signedMsgPhase1, { value: PRICE })).to.be.revertedWith('NOT_WHITELISTED');
 
-    //   let reserveSupply = await contract.reserveSupply();
-
-    //   for (let i = 0; i < MAX_SUPPLY - reserveSupply; i++) await contract.mint(1, { value: PRICE });
-
-    //   await contract.giveAway(user1.address, reserveSupply);
-
-    //   expect(await contract.totalSupply()).to.equal(MAX_SUPPLY);
-    // });
+      await contract.connect(user1).whitelistMint(2, signedMsgPhase1, { value: PRICE.mul(BN('2')) });
+      await expect(contract.connect(user1).whitelistMint(1, signedMsgPhase1, { value: PRICE })).to.be.revertedWith(
+        'WHITELIST_USED'
+      );
+    });
   });
 });
