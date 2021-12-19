@@ -16,7 +16,7 @@ describe('NFT contract', function () {
   let PURCHASE_LIMIT;
 
   beforeEach(async function () {
-    NFT = await ethers.getContractFactory('NFTXXX');
+    NFT = await ethers.getContractFactory('NFT');
     [owner, user1, user2, ...signers] = await ethers.getSigners();
 
     contract = await NFT.deploy();

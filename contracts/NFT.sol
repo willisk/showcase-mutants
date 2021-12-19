@@ -3,10 +3,10 @@ pragma solidity 0.8.10;
 
 // import "hardhat/console.sol";
 
-import "./ERC721B.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import './ERC721B.sol';
+import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import '@openzeppelin/contracts/access/Ownable.sol';
+import '@openzeppelin/contracts/utils/cryptography/ECDSA.sol';
 
 contract NFT is ERC721B, Ownable {
     using ECDSA for bytes32;
@@ -20,7 +20,7 @@ contract NFT is ERC721B, Ownable {
 
     event PhaseUpdate(PHASE phase);
 
-    string public unrevealedURI = "ipfs://XXX";
+    string public unrevealedURI = 'ipfs://XXX';
     string public baseURI;
 
     PHASE public phase;
@@ -38,46 +38,34 @@ contract NFT is ERC721B, Ownable {
     mapping(address => bool) private _whitelistUsed;
     mapping(address => bool) private _diamondlistUsed;
 
-    constructor() ERC721B("MyNFTXXX", "NFTXXX") {
-        _mint(0); // XXX: remove this!!!!!!! only useful for gas estimation tests
+    constructor() ERC721B('MyNFTXXX', 'NFTXXX') {
+        // _mint(0); // XXX: remove this!!!!!!! only useful for gas estimation tests
     }
 
     // ------------- User Api -------------
 
     function mint(uint256 amount) external payable onlyPublicSale onlyHuman {
-        require(amount <= PURCHASE_LIMIT, "EXCEEDS_LIMIT");
-        require(msg.value == PRICE * amount, "INCORRECT_VALUE");
+        require(amount <= PURCHASE_LIMIT, 'EXCEEDS_LIMIT');
+        require(msg.value == PRICE * amount, 'INCORRECT_VALUE');
 
         uint256 tokenId = totalSupply();
-        require(tokenId + amount < MAX_SUPPLY, "MAX_SUPPLY_REACHED");
+        require(tokenId + amount < MAX_SUPPLY, 'MAX_SUPPLY_REACHED');
 
         for (uint256 i; i < amount; i++) _mint(tokenId + i);
     }
 
-    function whitelistMint(uint256 amount, bytes memory signature)
-        external
-        payable
-        onlyPresale
-        onlyWhitelisted(signature)
-        onlyHuman
-    {
-        require(amount <= WHITELIST_PURCHASE_LIMIT, "EXCEEDS_LIMIT");
-        require(msg.value == WHITELIST_PRICE * amount, "INCORRECT_VALUE");
+    function whitelistMint(uint256 amount, bytes memory signature) external payable onlyPresale onlyWhitelisted(signature) onlyHuman {
+        require(amount <= WHITELIST_PURCHASE_LIMIT, 'EXCEEDS_LIMIT');
+        require(msg.value == WHITELIST_PRICE * amount, 'INCORRECT_VALUE');
 
         uint256 tokenId = totalSupply();
-        require(tokenId + amount < MAX_SUPPLY, "MAX_SUPPLY_REACHED");
+        require(tokenId + amount < MAX_SUPPLY, 'MAX_SUPPLY_REACHED');
         for (uint256 i; i < amount; i++) _mint(tokenId + i);
     }
 
-    function diamondMint(bytes memory signature)
-        external
-        payable
-        onlyInitialPhase
-        onlyDiamondlisted(signature)
-        onlyHuman
-    {
+    function diamondMint(bytes memory signature) external payable onlyInitialPhase onlyDiamondlisted(signature) onlyHuman {
         uint256 tokenId = totalSupply();
-        require(tokenId < MAX_SUPPLY, "MAX_SUPPLY_REACHED");
+        require(tokenId < MAX_SUPPLY, 'MAX_SUPPLY_REACHED');
         _mint(tokenId);
     }
 
@@ -90,23 +78,19 @@ contract NFT is ERC721B, Ownable {
 
     // await signer.signMessage(_ethers.utils.arrayify(_ethers.utils.keccak256(_ethers.utils.defaultAbiCoder.encode(['address', 'address'], ['<contract>', '<user>']))))
     modifier onlyDiamondlisted(bytes memory signature) {
-        bytes32 msgHash = keccak256(
-            abi.encode(address(this), PHASE.INITIAL, msg.sender)
-        );
+        bytes32 msgHash = keccak256(abi.encode(address(this), PHASE.INITIAL, msg.sender));
         address signer = msgHash.toEthSignedMessageHash().recover(signature);
-        require(signer == _signerAddress, "NOT_WHITELISTED");
-        require(!_diamondlistUsed[msg.sender], "WHITELIST_USED");
+        require(signer == _signerAddress, 'NOT_WHITELISTED');
+        require(!_diamondlistUsed[msg.sender], 'WHITELIST_USED');
         _diamondlistUsed[msg.sender] = true;
         _;
     }
 
     modifier onlyWhitelisted(bytes memory signature) {
-        bytes32 msgHash = keccak256(
-            abi.encode(address(this), PHASE.PRESALE, msg.sender)
-        );
+        bytes32 msgHash = keccak256(abi.encode(address(this), PHASE.PRESALE, msg.sender));
         address signer = msgHash.toEthSignedMessageHash().recover(signature);
-        require(signer == _signerAddress, "NOT_WHITELISTED");
-        require(!_whitelistUsed[msg.sender], "WHITELIST_USED");
+        require(signer == _signerAddress, 'NOT_WHITELISTED');
+        require(!_whitelistUsed[msg.sender], 'WHITELIST_USED');
         _whitelistUsed[msg.sender] = true;
         _;
     }
@@ -138,50 +122,36 @@ contract NFT is ERC721B, Ownable {
     function recoverToken(IERC20 _token) external onlyOwner {
         uint256 balance = _token.balanceOf(address(this));
         bool _success = _token.transfer(owner(), balance);
-        require(_success, "Token could not be transferred");
+        require(_success, 'Token could not be transferred');
     }
 
     // ------------- View -------------
 
-    function tokenURI(uint256 tokenId)
-        public
-        view
-        virtual
-        override
-        returns (string memory)
-    {
-        require(
-            _exists(tokenId),
-            "ERC721Metadata: URI query for nonexistent token"
-        );
+    function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
+        require(_exists(tokenId), 'ERC721Metadata: URI query for nonexistent token');
 
-        return
-            bytes(baseURI).length > 0
-                ? string(
-                    abi.encodePacked(baseURI, "/", tokenId.toString(), ".json")
-                )
-                : unrevealedURI;
+        return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, '/', tokenId.toString(), '.json')) : unrevealedURI;
     }
 
     // ------------- Modifier -------------
 
     modifier onlyInitialPhase() {
-        require(phase == PHASE.INITIAL, "INITIAL_PHASE_NOT_ACTIVE");
+        require(phase == PHASE.INITIAL, 'INITIAL_PHASE_NOT_ACTIVE');
         _;
     }
 
     modifier onlyPresale() {
-        require(phase == PHASE.PRESALE, "PRESALE_NOT_ACTIVE");
+        require(phase == PHASE.PRESALE, 'PRESALE_NOT_ACTIVE');
         _;
     }
 
     modifier onlyPublicSale() {
-        require(phase == PHASE.PUBLIC, "PUBLIC_SALE_NOT_ACTIVE");
+        require(phase == PHASE.PUBLIC, 'PUBLIC_SALE_NOT_ACTIVE');
         _;
     }
 
     modifier onlyHuman() {
-        require(tx.origin == msg.sender, "CONTRACT_CALL");
+        require(tx.origin == msg.sender, 'CONTRACT_CALL');
         _;
     }
 }
