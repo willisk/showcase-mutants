@@ -14,6 +14,10 @@ import '@openzeppelin/contracts/utils/Strings.sol';
  * @author: Squeebo *
  ********************/
 
+/*
+ *  additions: phaze.eth
+ */
+
 abstract contract ERC721X is Context, ERC165, IERC721, IERC721Metadata {
     using Address for address;
     using Strings for uint256;
