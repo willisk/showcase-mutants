@@ -13,5 +13,8 @@
     "@nomiclabs/hardhat-etherscan": "^2.1.8",
     "@openzeppelin/contracts": "^4.4.0",
     "dotenv": "^10.0.0"
+  },
+  "scripts": {
+    "test": "npx hardhat test"
   }
 }

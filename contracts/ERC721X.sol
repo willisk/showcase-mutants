@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.10;
 
 //   _____     _____       ____  _            _         ▗█▘ ▟▛
 //  |_   _|__ |  ___|   _ | __ )| | ___   ___| | __    ▗▛▘ ▟▛
@@ -10,9 +10,9 @@ pragma solidity ^0.8.0;
 //                             ▟▀▀▀▀     ▝▀▀▀▀▀▀▀▀█▖
 //                           ▗▛                  ▟▘▌
 //                          ▄▛ ▗▄▄▄▄▄▄▄▄▄▄▄▄▄▄ ▗▛  ▌
-//                         ▐▛▀▀▀   ▗     ▖   ▝▀▜   ▌
-//                         ▐   ▗▖          ▄   ▐   ▌
-//                         ▐    ▀▀▀▀▀▀▀▀▀▀▀▘   ▐   ▛▀▀▀▀█
+//                         ▐▛▀▀▀            ▝▀▜   ▌
+//                         ▐      ▗     ▗      ▐   ▌
+//                         ▐                   ▐   ▛▀▀▀▀█
 //                        ▗█                   ▐  ▗▌   ▟▘
 //                       ▟▀▐                   ▐  ▟   ▐▘
 //                      ▟▘ ▐▖                  ▛▗▞   ▗▌
@@ -20,8 +20,8 @@ pragma solidity ^0.8.0;
 //                    ▟▘                           ▗▛
 //                   ▟▙▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▛
 //
-// original author: Squeebo
-// additions: ToFuBlock
+// Implementation of ERC721, with minimal adjustments:
+// _balances[] is removed
 
 import '@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol';
 import '@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol';
@@ -31,7 +31,12 @@ import '@openzeppelin/contracts/utils/Context.sol';
 import '@openzeppelin/contracts/utils/Address.sol';
 import '@openzeppelin/contracts/utils/Strings.sol';
 
-abstract contract ERC721X is Context, ERC165, IERC721, IERC721Metadata {
+/**
+ * @dev Implementation of https://eips.ethereum.org/EIPS/eip-721[ERC721] Non-Fungible Token Standard, including
+ * the Metadata extension, but not including the Enumerable extension, which is available separately as
+ * {ERC721Enumerable}.
+ */
+contract ERC721X is Context, ERC165, IERC721, IERC721Metadata {
     using Address for address;
     using Strings for uint256;
 
@@ -42,7 +47,10 @@ abstract contract ERC721X is Context, ERC165, IERC721, IERC721Metadata {
     string private _symbol;
 
     // Mapping from token ID to owner address
-    address[] internal _owners;
+    mapping(uint256 => address) internal _owners;
+
+    // Mapping owner address to token count
+    // mapping(address => uint256) private _balances;
 
     // Mapping from token ID to approved address
     mapping(uint256 => address) private _tokenApprovals;
@@ -62,49 +70,29 @@ abstract contract ERC721X is Context, ERC165, IERC721, IERC721Metadata {
      * @dev See {IERC165-supportsInterface}.
      */
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165, IERC165) returns (bool) {
-        return interfaceId == type(IERC721).interfaceId || interfaceId == type(IERC721Metadata).interfaceId || super.supportsInterface(interfaceId);
+        return
+            interfaceId == type(IERC721).interfaceId ||
+            interfaceId == type(IERC721Metadata).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 
-    /**
-     * @dev See {IERC721-balanceOf}.
-     */
-    function balanceOf(address owner) public view virtual override returns (uint256) {
-        require(owner != address(0), 'ERC721: balance query for the zero address');
-
-        uint256 count;
-        for (uint256 i; i < _owners.length; ++i) {
-            if (owner == _owners[i]) {
-                ++count;
-            }
-        }
-
-        return count;
-    }
-
-    /**
-     * @dev Gets all token IDs for a particular user. This is a very inefficient implementation, requiring two loops over the whole owners array.
-     * Could probably be implemented more efficiently with linked-lists.
-     */
-    function ownerTokenIds(address owner) public view virtual returns (uint256[] memory) {
-        require(owner != address(0), 'ERC721: balance query for the zero address');
-
-        uint256[] memory ids = new uint256[](balanceOf(owner));
-
-        for (uint256 i; i < _owners.length; ++i) {
-            if (owner == _owners[i]) {
-                ids[i] = i;
-            }
-        }
-
-        return ids;
-    }
+    // /**
+    //  * @dev See {IERC721-balanceOf}.
+    //  */
+    // function balanceOf(address owner) public view virtual override returns (uint256) {
+    //     require(owner != address(0), 'ERC721: balance query for the zero address');
+    //     uint256 count;
+    //     for (uint256 i; i < _owners.length; ++i) if (owner == _owners[i]) count++;
+    //     return count;
+    // }
+    function balanceOf(address owner) public view virtual override returns (uint256) {}
 
     /**
      * @dev See {IERC721-ownerOf}.
      */
     function ownerOf(uint256 tokenId) public view virtual override returns (address) {
-        require(_exists(tokenId), 'ERC721: owner query for nonexistent token');
         address owner = _owners[tokenId];
+        require(owner != address(0), 'ERC721: owner query for nonexistent token');
         return owner;
     }
 
@@ -129,7 +117,7 @@ abstract contract ERC721X is Context, ERC165, IERC721, IERC721Metadata {
         require(_exists(tokenId), 'ERC721Metadata: URI query for nonexistent token');
 
         string memory baseURI = _baseURI();
-        return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, tokenId.toString(), '.json')) : '';
+        return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, tokenId.toString())) : '';
     }
 
     /**
@@ -148,7 +136,10 @@ abstract contract ERC721X is Context, ERC165, IERC721, IERC721Metadata {
         address owner = ERC721X.ownerOf(tokenId);
         require(to != owner, 'ERC721: approval to current owner');
 
-        require(_msgSender() == owner || isApprovedForAll(owner, _msgSender()), 'ERC721: approve caller is not owner nor approved for all');
+        require(
+            _msgSender() == owner || isApprovedForAll(owner, _msgSender()),
+            'ERC721: approve caller is not owner nor approved for all'
+        );
 
         _approve(to, tokenId);
     }
@@ -251,17 +242,7 @@ abstract contract ERC721X is Context, ERC165, IERC721, IERC721Metadata {
      * and stop existing when they are burned (`_burn`).
      */
     function _exists(uint256 tokenId) internal view virtual returns (bool) {
-        return tokenId < _owners.length && _owners[tokenId] != address(0);
-    }
-
-    /**
-     * @dev Returns number of minted ids.
-     *
-     * NOTE: Does not account for burned token ids.
-     *
-     */
-    function totalSupply() public view returns (uint256) {
-        return _owners.length;
+        return _owners[tokenId] != address(0);
     }
 
     /**
@@ -301,7 +282,10 @@ abstract contract ERC721X is Context, ERC165, IERC721, IERC721Metadata {
         bytes memory _data
     ) internal virtual {
         _mint(to, tokenId);
-        require(_checkOnERC721Received(address(0), to, tokenId, _data), 'ERC721: transfer to non ERC721Receiver implementer');
+        require(
+            _checkOnERC721Received(address(0), to, tokenId, _data),
+            'ERC721: transfer to non ERC721Receiver implementer'
+        );
     }
 
     /**
@@ -322,10 +306,16 @@ abstract contract ERC721X is Context, ERC165, IERC721, IERC721Metadata {
 
         _beforeTokenTransfer(address(0), to, tokenId);
 
+        // _balances[to] += 1;
         _owners[tokenId] = to;
 
         emit Transfer(address(0), to, tokenId);
     }
+
+    // function _mintUnchecked(address to, uint256 tokenId) internal virtual {
+    //     _owners[tokenId] = to;
+    //     emit Transfer(address(0), to, tokenId);
+    // }
 
     /**
      * @dev Destroys `tokenId`.
@@ -344,7 +334,9 @@ abstract contract ERC721X is Context, ERC165, IERC721, IERC721Metadata {
 
         // Clear approvals
         _approve(address(0), tokenId);
-        _owners[tokenId] = address(0);
+
+        // _balances[owner] -= 1;
+        delete _owners[tokenId];
 
         emit Transfer(owner, address(0), tokenId);
     }
@@ -372,6 +364,9 @@ abstract contract ERC721X is Context, ERC165, IERC721, IERC721Metadata {
 
         // Clear approvals from the previous owner
         _approve(address(0), tokenId);
+
+        // _balances[from] -= 1;
+        // _balances[to] += 1;
         _owners[tokenId] = to;
 
         emit Transfer(from, to, tokenId);

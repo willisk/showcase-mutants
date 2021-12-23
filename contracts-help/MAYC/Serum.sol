@@ -9,7 +9,7 @@ import '@openzeppelin/contracts/access/Ownable.sol';
 contract Serum is ERC1155, Ownable {
     using Strings for uint256;
 
-    address private mutationContract;
+    address private mutantsAddress;
     string private baseURI;
 
     mapping(uint256 => bool) public validSerumTypes;
@@ -25,7 +25,7 @@ contract Serum is ERC1155, Ownable {
     }
 
     function burnSerumForAddress(uint256 typeId, address from) external {
-        require(msg.sender == mutationContract, 'Invalid burner address');
+        require(msg.sender == mutantsAddress, 'Invalid burner address');
         _burn(from, typeId, 1);
     }
 
@@ -38,8 +38,8 @@ contract Serum is ERC1155, Ownable {
         _mintBatch(owner(), ids, amounts, '');
     }
 
-    function setMutationContractAddress(address mutationContractAddress) external onlyOwner {
-        mutationContract = mutationContractAddress;
+    function setMutantsAddress(address mutantsAddress) external onlyOwner {
+        mutantsAddress = mutantsAddress;
     }
 
     function uri(uint256 typeId) public view override returns (string memory) {
