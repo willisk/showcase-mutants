@@ -12,13 +12,13 @@ contract NFT is ERC721X, Ownable {
     using ECDSA for bytes32;
     using Strings for uint256;
 
-    uint256 private constant PHASE_INITIAL = 0;
-    uint256 private constant PHASE_PRESALE = 1;
-    uint256 private constant PHASE_PUBLIC = 2;
+    uint256 private constant STATE_INITIAL = 0;
+    uint256 private constant STATE_PRESALE = 1;
+    uint256 private constant STATE_PUBLIC = 2;
 
-    event PhaseUpdate(uint256 phase);
+    event StateUpdate(uint256 state);
 
-    uint256 public phase;
+    uint256 public state;
 
     address private _signerAddress = 0x68442589f40E8Fc3a9679dE62884c85C6E524888;
 
@@ -64,7 +64,7 @@ contract NFT is ERC721X, Ownable {
     function diamondMint(bytes memory signature)
         external
         payable
-        whenInitialPhase
+        whenInitialState
         onlyDiamondlisted(signature)
         onlyHuman
     {
@@ -83,9 +83,9 @@ contract NFT is ERC721X, Ownable {
         _signerAddress = _address;
     }
 
-    function setSalePhase(uint256 _phase) external onlyOwner {
-        phase = _phase;
-        emit PhaseUpdate(_phase);
+    function setSaleState(uint256 _state) external onlyOwner {
+        state = _state;
+        emit StateUpdate(_state);
     }
 
     function setBaseURI(string memory _baseURI) external onlyOwner {
@@ -119,11 +119,11 @@ contract NFT is ERC721X, Ownable {
     }
 
     function presaleActive() external view returns (bool) {
-        return phase == PHASE_PRESALE;
+        return state == STATE_PRESALE;
     }
 
     function publicSaleActive() external view returns (bool) {
-        return phase == PHASE_PUBLIC;
+        return state == STATE_PUBLIC;
     }
 
     // ------------- Internal -------------
@@ -144,25 +144,25 @@ contract NFT is ERC721X, Ownable {
         totalSupply += amount;
     }
 
-    function _validSignature(bytes memory signature, uint256 _phase) internal view returns (bool) {
-        bytes32 msgHash = keccak256(abi.encode(address(this), _phase, msg.sender));
+    function _validSignature(bytes memory signature, uint256 _state) internal view returns (bool) {
+        bytes32 msgHash = keccak256(abi.encode(address(this), _state, msg.sender));
         return msgHash.toEthSignedMessageHash().recover(signature) == _signerAddress;
     }
 
     // ------------- Modifier -------------
 
-    modifier whenInitialPhase() {
-        require(phase == PHASE_INITIAL, 'INITIAL_PHASE_NOT_ACTIVE');
+    modifier whenInitialState() {
+        require(state == STATE_INITIAL, 'INITIAL_STATE_NOT_ACTIVE');
         _;
     }
 
     modifier whenPresaleActive() {
-        require(phase == PHASE_PRESALE, 'PRESALE_NOT_ACTIVE');
+        require(state == STATE_PRESALE, 'PRESALE_NOT_ACTIVE');
         _;
     }
 
     modifier whenPublicSaleActive() {
-        require(phase == PHASE_PUBLIC, 'PUBLIC_SALE_NOT_ACTIVE');
+        require(state == STATE_PUBLIC, 'PUBLIC_SALE_NOT_ACTIVE');
         _;
     }
 
@@ -173,14 +173,14 @@ contract NFT is ERC721X, Ownable {
 
     // await signer.signMessage(_ethers.utils.arrayify(_ethers.utils.keccak256(_ethers.utils.defaultAbiCoder.encode(['address', 'address'], ['<contract>', '<user>']))))
     modifier onlyDiamondlisted(bytes memory signature) {
-        require(_validSignature(signature, PHASE_INITIAL), 'NOT_WHITELISTED');
+        require(_validSignature(signature, STATE_INITIAL), 'NOT_WHITELISTED');
         require(!_diamondlistUsed[msg.sender], 'WHITELIST_USED');
         _diamondlistUsed[msg.sender] = true;
         _;
     }
 
     modifier onlyWhitelisted(bytes memory signature) {
-        require(_validSignature(signature, PHASE_PRESALE), 'NOT_WHITELISTED');
+        require(_validSignature(signature, STATE_PRESALE), 'NOT_WHITELISTED');
         require(!_whitelistUsed[msg.sender], 'WHITELIST_USED');
         _whitelistUsed[msg.sender] = true;
         _;

@@ -2,6 +2,10 @@ const hre = require('hardhat');
 const { ethers } = require('hardhat');
 
 async function main() {
+  [owner] = await ethers.getSigners();
+
+  // console.log(await owner.getTransactionCount());
+
   const NFT = await ethers.getContractFactory('NFT');
   const MUTANTS = await ethers.getContractFactory('Mutants');
   const SERUM = await ethers.getContractFactory('Serum');
@@ -10,9 +14,9 @@ async function main() {
   mutants = await MUTANTS.deploy();
   serum = await SERUM.deploy();
 
-  await mutants.setSerumAddress(serum.address);
-  await mutants.setNFTAddress(nft.address);
-  await serum.setMutantsAddress(mutants.address);
+  (await mutants.setSerumAddress(serum.address)).wait();
+  (await mutants.setNFTAddress(nft.address)).wait();
+  (await serum.setMutantsAddress(mutants.address)).wait();
 
   console.log('NFT contract deployed to', nft.address);
   console.log('Mutant contract deployed to', mutants.address);

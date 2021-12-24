@@ -43,6 +43,10 @@ module.exports = {
     ],
   },
   networks: {
+    mainnet: {
+      url: process.env.PROVIDER_MAINNET,
+      accounts: [process.env.PRIVATE_KEY],
+    },
     rinkeby: {
       url: process.env.PROVIDER_RINKEBY,
       accounts: [process.env.PRIVATE_KEY],
@@ -50,7 +54,7 @@ module.exports = {
     kovan: {
       url: process.env.PROVIDER_KOVAN,
       accounts: [process.env.PRIVATE_KEY],
-      gasPrice: 10,
+      gasPrice: 10 * 10 ** 9,
     },
     bsc: {
       url: process.env.PROVIDER_BSC,

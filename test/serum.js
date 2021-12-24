@@ -45,7 +45,7 @@ describe('NFT contract', function () {
 
   describe('Claim', function () {
     beforeEach(async function () {
-      await nft.setSalePhase(2);
+      await nft.setSaleState(2);
     });
 
     it('Able to set mega ids correctly', async function () {
