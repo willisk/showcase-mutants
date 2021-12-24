@@ -14,6 +14,7 @@ describe('NFT contract', function () {
   let signers;
 
   let PRICE;
+  let WHITELIST_PRICE;
   let MAX_SUPPLY;
   let PURCHASE_LIMIT;
 
@@ -24,6 +25,7 @@ describe('NFT contract', function () {
     contract = await NFT.deploy();
 
     PRICE = await contract.PRICE();
+    WHITELIST_PRICE = await contract.WHITELIST_PRICE();
     MAX_SUPPLY = await contract.MAX_SUPPLY();
     PURCHASE_LIMIT = await contract.PURCHASE_LIMIT();
   });
@@ -37,23 +39,26 @@ describe('NFT contract', function () {
 
   describe('Owner', function () {
     it('Correct function access rights', async function () {
-      await expect(contract.connect(user1).setSaleState(0)).to.be.revertedWith('Ownable: caller is not the owner');
+      await expect(contract.connect(user1).setPublicSaleActive(false)).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      );
       await expect(contract.connect(user1).withdraw()).to.be.revertedWith('Ownable: caller is not the owner');
       await expect(contract.connect(user1).setBaseURI('')).to.be.revertedWith('Ownable: caller is not the owner');
       // await expect(contract.connect(user1).giveAway(user2.address, 1)).to.be.revertedWith(
       //   'Ownable: caller is not the owner'
       // );
 
-      await contract.setSaleState(1);
       await contract.withdraw();
       await contract.setBaseURI('');
+      await contract.setPublicSaleActive(true);
+
+      expect(await contract.publicSaleActive()).to.equal(true);
     });
   });
 
   describe('Public Mint', function () {
     beforeEach(async function () {
-      await contract.setSaleState(2);
-      expect(await contract.publicSaleActive()).to.equal(true);
+      await contract.setPublicSaleActive(true);
     });
 
     it('Correct sale logic and minting ability', async function () {
@@ -66,7 +71,7 @@ describe('NFT contract', function () {
       expect(await contract.ownerOf(2)).to.equal(user2.address);
 
       // stop sale
-      await contract.setSaleState(0);
+      await contract.setPublicSaleActive(false);
       expect(await contract.publicSaleActive()).to.equal(false);
 
       await expect(contract.mint(1)).to.be.revertedWith('PUBLIC_SALE_NOT_ACTIVE');
@@ -88,45 +93,73 @@ describe('NFT contract', function () {
   describe('Whitelist', function () {
     beforeEach(async function () {
       await contract.setSignerAddress(owner.address);
-      await contract.setSaleState(0);
+      await contract.setPublicSaleActive(false);
     });
 
     it('Correct whitelist guard', async function () {
-      const signedMsgState0 = await owner.signMessage(
+      // incorrect address (1st param)
+      const invalidSig1 = await owner.signMessage(
         ethers.utils.arrayify(
           ethers.utils.keccak256(
-            ethers.utils.defaultAbiCoder.encode(['address', 'uint8', 'address'], [contract.address, 0, user1.address])
+            ethers.utils.defaultAbiCoder.encode(['address', 'uint256', 'address'], [owner.address, 69, user1.address])
           )
         )
       );
 
-      // signed for incorrect address
-      await expect(contract.diamondMint(signedMsgState0)).to.be.revertedWith('NOT_WHITELISTED');
-
-      await contract.connect(user1).diamondMint(signedMsgState0);
-      await expect(contract.connect(user1).diamondMint(signedMsgState0)).to.be.revertedWith('WHITELIST_USED');
-
-      const signedMsgState1 = await owner.signMessage(
+      // incorrect signer
+      const invalidSig2 = await user1.signMessage(
         ethers.utils.arrayify(
           ethers.utils.keccak256(
-            ethers.utils.defaultAbiCoder.encode(['address', 'uint8', 'address'], [contract.address, 1, user1.address])
+            ethers.utils.defaultAbiCoder.encode(
+              ['address', 'uint256', 'address'],
+              [contract.address, 69, user1.address]
+            )
           )
         )
       );
 
-      await contract.setSaleState(1);
-
-      // using incorrect state0 signed message
-      await expect(contract.connect(user1).whitelistMint(1, signedMsgState0, { value: PRICE })).to.be.revertedWith(
-        'NOT_WHITELISTED'
+      const whitelistSig = await owner.signMessage(
+        ethers.utils.arrayify(
+          ethers.utils.keccak256(
+            ethers.utils.defaultAbiCoder.encode(
+              ['address', 'uint256', 'address'],
+              [contract.address, 69, user1.address]
+            )
+          )
+        )
       );
-      // correct state, incorrect user address
-      await expect(contract.whitelistMint(1, signedMsgState1, { value: PRICE })).to.be.revertedWith('NOT_WHITELISTED');
 
-      await contract.connect(user1).whitelistMint(2, signedMsgState1, { value: PRICE.mul(BN('2')) });
-      await expect(contract.connect(user1).whitelistMint(1, signedMsgState1, { value: PRICE })).to.be.revertedWith(
-        'WHITELIST_USED'
+      const diamondlistSig = await owner.signMessage(
+        ethers.utils.arrayify(
+          ethers.utils.keccak256(
+            ethers.utils.defaultAbiCoder.encode(
+              ['address', 'uint256', 'address'],
+              [contract.address, 1337, user1.address]
+            )
+          )
+        )
       );
+
+      // whitelist not active
+      await expect(contract.whitelistMint(1, whitelistSig)).to.be.revertedWith('WHITELIST_NOT_ACTIVE');
+      await expect(contract.diamondlistMint(diamondlistSig)).to.be.revertedWith('DIAMONDLIST_NOT_ACTIVE');
+
+      await contract.setWhitelistActive(true);
+      await contract.setDiamondlistActive(true);
+
+      // signed for incorrect user
+      await expect(contract.whitelistMint(1, whitelistSig)).to.be.revertedWith('NOT_WHITELISTED');
+      await expect(contract.diamondlistMint(diamondlistSig)).to.be.revertedWith('NOT_WHITELISTED');
+
+      // invalid signatures
+      await expect(contract.connect(user1).whitelistMint(1, invalidSig1)).to.be.revertedWith('NOT_WHITELISTED');
+      await expect(contract.connect(user1).diamondlistMint(invalidSig2)).to.be.revertedWith('NOT_WHITELISTED');
+
+      await contract.connect(user1).whitelistMint(1, whitelistSig, { value: WHITELIST_PRICE });
+      await contract.connect(user1).diamondlistMint(diamondlistSig);
+
+      await expect(contract.connect(user1).whitelistMint(1, whitelistSig)).to.be.revertedWith('WHITELIST_USED');
+      await expect(contract.connect(user1).diamondlistMint(diamondlistSig)).to.be.revertedWith('WHITELIST_USED');
     });
   });
 });

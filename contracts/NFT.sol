@@ -12,18 +12,14 @@ contract NFT is ERC721X, Ownable {
     using ECDSA for bytes32;
     using Strings for uint256;
 
-    uint256 private constant STATE_INITIAL = 0;
-    uint256 private constant STATE_PRESALE = 1;
-    uint256 private constant STATE_PUBLIC = 2;
-
-    event StateUpdate(uint256 state);
-
-    uint256 public state;
-
-    address private _signerAddress = 0x68442589f40E8Fc3a9679dE62884c85C6E524888;
+    event PublicSaleStateUpdate(bool active);
 
     string public unrevealedURI = 'ipfs://XXX';
     string public baseURI;
+
+    bool public publicSaleActive;
+    bool public whitelistActive;
+    bool public diamondlistActive;
 
     uint256 public totalSupply;
     uint256 public constant MAX_SUPPLY = 1000;
@@ -36,6 +32,11 @@ contract NFT is ERC721X, Ownable {
 
     mapping(address => bool) private _whitelistUsed;
     mapping(address => bool) private _diamondlistUsed;
+
+    address private _signerAddress = 0x68442589f40E8Fc3a9679dE62884c85C6E524888;
+
+    uint256 private constant SIGNED_DATA_WHITELIST = 69;
+    uint256 private constant SIGNED_DATA_DIAMONDLIST = 1337;
 
     constructor() ERC721X('MyNFTXXX', 'NFTXXX') {}
 
@@ -51,7 +52,7 @@ contract NFT is ERC721X, Ownable {
     function whitelistMint(uint256 amount, bytes memory signature)
         external
         payable
-        whenPresaleActive
+        whenWhitelistActive
         onlyWhitelisted(signature)
         onlyHuman
     {
@@ -61,10 +62,10 @@ contract NFT is ERC721X, Ownable {
         _mintBatchTo(msg.sender, amount);
     }
 
-    function diamondMint(bytes memory signature)
+    function diamondlistMint(bytes memory signature)
         external
         payable
-        whenInitialState
+        whenDiamondlistActive
         onlyDiamondlisted(signature)
         onlyHuman
     {
@@ -83,9 +84,17 @@ contract NFT is ERC721X, Ownable {
         _signerAddress = _address;
     }
 
-    function setSaleState(uint256 _state) external onlyOwner {
-        state = _state;
-        emit StateUpdate(_state);
+    function setWhitelistActive(bool active) external onlyOwner {
+        whitelistActive = active;
+    }
+
+    function setDiamondlistActive(bool active) external onlyOwner {
+        diamondlistActive = active;
+    }
+
+    function setPublicSaleActive(bool active) external onlyOwner {
+        publicSaleActive = active;
+        emit PublicSaleStateUpdate(active);
     }
 
     function setBaseURI(string memory _baseURI) external onlyOwner {
@@ -118,14 +127,6 @@ contract NFT is ERC721X, Ownable {
                 : unrevealedURI;
     }
 
-    function presaleActive() external view returns (bool) {
-        return state == STATE_PRESALE;
-    }
-
-    function publicSaleActive() external view returns (bool) {
-        return state == STATE_PUBLIC;
-    }
-
     // ------------- Internal -------------
 
     function _mintTo(address to) internal {
@@ -144,25 +145,25 @@ contract NFT is ERC721X, Ownable {
         totalSupply += amount;
     }
 
-    function _validSignature(bytes memory signature, uint256 _state) internal view returns (bool) {
-        bytes32 msgHash = keccak256(abi.encode(address(this), _state, msg.sender));
+    function _validSignature(bytes memory signature, bytes32 data) internal view returns (bool) {
+        bytes32 msgHash = keccak256(abi.encode(address(this), data, msg.sender));
         return msgHash.toEthSignedMessageHash().recover(signature) == _signerAddress;
     }
 
     // ------------- Modifier -------------
 
-    modifier whenInitialState() {
-        require(state == STATE_INITIAL, 'INITIAL_STATE_NOT_ACTIVE');
+    modifier whenDiamondlistActive() {
+        require(diamondlistActive, 'DIAMONDLIST_NOT_ACTIVE');
         _;
     }
 
-    modifier whenPresaleActive() {
-        require(state == STATE_PRESALE, 'PRESALE_NOT_ACTIVE');
+    modifier whenWhitelistActive() {
+        require(whitelistActive, 'WHITELIST_NOT_ACTIVE');
         _;
     }
 
     modifier whenPublicSaleActive() {
-        require(state == STATE_PUBLIC, 'PUBLIC_SALE_NOT_ACTIVE');
+        require(publicSaleActive, 'PUBLIC_SALE_NOT_ACTIVE');
         _;
     }
 
@@ -173,14 +174,14 @@ contract NFT is ERC721X, Ownable {
 
     // await signer.signMessage(_ethers.utils.arrayify(_ethers.utils.keccak256(_ethers.utils.defaultAbiCoder.encode(['address', 'address'], ['<contract>', '<user>']))))
     modifier onlyDiamondlisted(bytes memory signature) {
-        require(_validSignature(signature, STATE_INITIAL), 'NOT_WHITELISTED');
+        require(_validSignature(signature, bytes32(SIGNED_DATA_DIAMONDLIST)), 'NOT_WHITELISTED');
         require(!_diamondlistUsed[msg.sender], 'WHITELIST_USED');
         _diamondlistUsed[msg.sender] = true;
         _;
     }
 
     modifier onlyWhitelisted(bytes memory signature) {
-        require(_validSignature(signature, STATE_PRESALE), 'NOT_WHITELISTED');
+        require(_validSignature(signature, bytes32(SIGNED_DATA_WHITELIST)), 'NOT_WHITELISTED');
         require(!_whitelistUsed[msg.sender], 'WHITELIST_USED');
         _whitelistUsed[msg.sender] = true;
         _;

@@ -18,9 +18,9 @@ async function main() {
   (await mutants.setNFTAddress(nft.address)).wait();
   (await serum.setMutantsAddress(mutants.address)).wait();
 
-  console.log('NFT contract deployed to', nft.address);
-  console.log('Mutant contract deployed to', mutants.address);
-  console.log('Serum contract deployed to', serum.address);
+  console.log('NFTAddress:', `"${nft.address}",`);
+  console.log('MutantAddress:', `"${mutants.address}",`);
+  console.log('SerumAddress:', `"${serum.address}",`);
 
   // contract.setBaseURI('ipfs://YYY');
 }
