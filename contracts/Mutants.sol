@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.10;
+pragma solidity 0.8.11;
 
 // import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
 // import {ChainlinkConsumer} from './ChainlinkConsumer.sol';
@@ -41,20 +41,20 @@ contract Mutants is ERC721X, Ownable, VRFBase {
     uint256 private constant OFFSET_M1 = MAX_SUPPLY_PUBLIC;
     uint256 private constant OFFSET_M2 = OFFSET_M1 + MAX_SUPPLY_M;
     uint256 private constant OFFSET_M3 = OFFSET_M2 + MAX_SUPPLY_M;
-    uint256 private constant MAX_TOTAL_SUPPLY = OFFSET_M3 + MAX_SUPPLY_M3;
+    uint256 private constant MAX_ID = OFFSET_M3 + MAX_SUPPLY_M3;
 
-    uint256 private numPublicMinted;
+    uint256 public numPublicMinted;
     uint256 private numMutants; // XXX: this variable could be removed (saves 1 sstore on mutate())
     uint256 private numMegaMutants;
 
     using ShuffleArray for uint256[];
-    uint256[] internal _megaIdsLeft;
+    uint256[] private _megaIdsLeft;
 
-    mapping(uint256 => uint256) internal _megaTokenIdFinal;
+    mapping(uint256 => uint256) private _megaTokenIdFinal;
     mapping(bytes32 => uint256) private requestIdToMegaId;
 
     constructor() ERC721X('Mutants', 'MUTX') {
-        for (uint256 i; i < 10; i++) _megaIdsLeft.push(OFFSET_M3 + i);
+        for (uint256 i; i < MAX_SUPPLY_M3; i++) _megaIdsLeft.push(OFFSET_M3 + i);
     }
 
     // ------------- External -------------
@@ -71,7 +71,10 @@ contract Mutants is ERC721X, Ownable, VRFBase {
         for (uint256 i; i < amount; i++) _mint(msg.sender, tokenId + i);
     }
 
-    // currently nfts can mutate multiple times with M3 serum
+    // quirks:
+    // - nfts can mutate multiple times with M3 serum
+    // - mutants can be resurrected once burned
+    // - total amount is only bound by number of available serums
     function mutate(uint256 nftId, uint256 serumType) external whenMutationsActive onlyHuman {
         require(NFT(nftAddress).ownerOf(nftId) == msg.sender, 'NOT_CALLERS_TOKEN');
         require(serumType < 3, 'INVALID_SERUM_TYPE');
@@ -86,7 +89,7 @@ contract Mutants is ERC721X, Ownable, VRFBase {
             tokenId = OFFSET_M3 + numMegaMutants;
             numMegaMutants++;
         }
-        _mint(msg.sender, tokenId); // this allows for burned mutants to be resurrected (kind of fitting)
+        _mint(msg.sender, tokenId);
         Serum(serumAddress).burnSerumOf(msg.sender, serumType);
         if (serumType == 2) requestRandomMegaMutant(tokenId);
     }
@@ -101,12 +104,12 @@ contract Mutants is ERC721X, Ownable, VRFBase {
         unrevealedURI = _uri;
     }
 
-    function setPublicSaleState(bool state) external onlyOwner {
-        publicSaleActive = state;
+    function setPublicSaleActive(bool active) external onlyOwner {
+        publicSaleActive = active;
     }
 
-    function setMutationsActiveState(bool state) external onlyOwner {
-        mutationsActive = state;
+    function setMutationsActive(bool active) external onlyOwner {
+        mutationsActive = active;
     }
 
     function setNFTAddress(address _address) external onlyOwner {
@@ -132,11 +135,21 @@ contract Mutants is ERC721X, Ownable, VRFBase {
 
     // emergency fail-safe
     function forceFulfillRandomMegaMutant(uint256 mutantId) external onlyOwner {
+        require(OFFSET_M3 <= mutantId, 'INVALID_MEGA_ID');
         uint256 randomNumber = uint256(blockhash(block.number - 1));
         _setMegaTokenId(mutantId, randomNumber);
     }
 
     // ------------- View -------------
+
+    // assumes proper input, view only
+    function canMutate(uint256 nftId, uint256 serumType) external view returns (bool) {
+        uint256 tokenId;
+        if (serumType == 0) tokenId = OFFSET_M1 + nftId;
+        else if (serumType == 1) tokenId = OFFSET_M2 + nftId;
+        else tokenId = OFFSET_M3 + numMegaMutants;
+        return !_exists(tokenId);
+    }
 
     // public mint and mega ids are reshuffled
     function _metadataId(uint256 tokenId) internal view returns (uint256) {
@@ -161,7 +174,7 @@ contract Mutants is ERC721X, Ownable, VRFBase {
     }
 
     function balanceOf(address owner) public view override returns (uint256) {
-        return _balanceOfRange(owner, 0, MAX_TOTAL_SUPPLY);
+        return _balanceOfRange(owner, 0, MAX_ID);
     }
 
     function balanceOfM0(address owner) external view returns (uint256) {
@@ -177,12 +190,12 @@ contract Mutants is ERC721X, Ownable, VRFBase {
     }
 
     function balanceOfM3(address owner) external view returns (uint256) {
-        return _balanceOfRange(owner, OFFSET_M3, MAX_TOTAL_SUPPLY);
+        return _balanceOfRange(owner, OFFSET_M3, MAX_ID);
     }
 
     function tokenIdsOf(address owner) external view returns (uint256[] memory) {
         uint256[] memory ids = new uint256[](balanceOf(owner));
-        for (uint256 i; i < MAX_TOTAL_SUPPLY; i++) if (owner == _owners[i]) ids[i] = i;
+        for (uint256 i; i < MAX_ID; i++) if (owner == _owners[i]) ids[i] = i;
         return ids;
     }
 
@@ -199,7 +212,7 @@ contract Mutants is ERC721X, Ownable, VRFBase {
         address owner,
         uint256 start,
         uint256 end
-    ) internal view returns (uint256) {
+    ) private view returns (uint256) {
         require(owner != address(0), 'ERC721: balance query for the zero address');
         uint256 balance;
         for (uint256 i = start; i < end; i++) if (owner == _owners[i]) balance++;
@@ -208,19 +221,19 @@ contract Mutants is ERC721X, Ownable, VRFBase {
 
     // function _requestRandomSeed() internal virtual returns (bytes32) {}
 
-    function requestRandomMegaMutant(uint256 tokenId) internal {
-        // XXX: needs to be tested on testnet!!!
-        // bytes32 requestId = _requestRandomSeed();
-        // requestIdToMegaId[requestId] = tokenId; // signal that this is a request for the specific tokenId
+    function requestRandomMegaMutant(uint256 tokenId) private {
+        // XXX: needs to be tested!
+        bytes32 requestId = _requestRandomSeed();
+        requestIdToMegaId[requestId] = tokenId; // signal that this is a request for the specific tokenId
     }
 
-    function fulfillRandomness(bytes32 requestId, uint256 randomNumber) internal override whenRandomSeedUnset {
+    function fulfillRandomness(bytes32 requestId, uint256 randomNumber) internal override {
         uint256 tokenId = requestIdToMegaId[requestId];
         if (tokenId == 0) _setRandomSeed(randomNumber);
         else _setMegaTokenId(tokenId, randomNumber);
     }
 
-    function _setMegaTokenId(uint256 tokenId, uint256 randomNumber) internal {
+    function _setMegaTokenId(uint256 tokenId, uint256 randomNumber) private {
         require(_exists(tokenId), 'MEGA_ID_NOT_FOUND');
         require(_megaTokenIdFinal[tokenId] == 0, 'MEGA_ID_ALREADY_SET');
         _megaTokenIdFinal[tokenId] = _megaIdsLeft.nextRandomElement(randomNumber);

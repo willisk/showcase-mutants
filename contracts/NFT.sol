@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity 0.8.10;
+pragma solidity 0.8.11;
 
 // import "hardhat/console.sol";
 
@@ -77,7 +77,7 @@ contract NFT is ERC721X, Ownable {
     // ------------- Admin -------------
 
     function giveAway(address to, uint256 amount) external onlyOwner {
-        _mintBatchTo(to, amount); // XXX: maybe safemint?
+        _mintBatchTo(to, amount);
     }
 
     function setSignerAddress(address _address) external onlyOwner {
@@ -107,7 +107,7 @@ contract NFT is ERC721X, Ownable {
 
     function withdraw() external onlyOwner {
         uint256 balance = address(this).balance;
-        payable(msg.sender).transfer(balance);
+        (bool _success, ) = payable(msg.sender).call{value: balance}('');
     }
 
     function recoverToken(IERC20 _token) external onlyOwner {
@@ -141,7 +141,7 @@ contract NFT is ERC721X, Ownable {
         uint256 tokenId = totalSupply;
         require(tokenId + amount <= MAX_SUPPLY, 'MAX_SUPPLY_REACHED');
 
-        for (uint256 i; i < amount; i++) _mint(to, tokenId + i); // could use unchecked
+        for (uint256 i; i < amount; i++) _mint(to, tokenId + i);
         totalSupply += amount;
     }
 
@@ -185,5 +185,20 @@ contract NFT is ERC721X, Ownable {
         require(!_whitelistUsed[msg.sender], 'WHITELIST_USED');
         _whitelistUsed[msg.sender] = true;
         _;
+    }
+
+    // ------------- ERC721 -------------
+
+    function balanceOf(address owner) public view override returns (uint256) {
+        require(owner != address(0), 'ERC721: balance query for the zero address');
+        uint256 count;
+        for (uint256 i; i < totalSupply; ++i) if (owner == _owners[i]) count++;
+        return count;
+    }
+
+    function tokenIdsOf(address owner) public view returns (uint256[] memory) {
+        uint256[] memory tokenIds = new uint256[](balanceOf(owner));
+        for (uint256 i; i < totalSupply; ++i) if (owner == _owners[i]) tokenIds[i] = i;
+        return tokenIds;
     }
 }

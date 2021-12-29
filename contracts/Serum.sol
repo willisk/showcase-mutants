@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // https://etherscan.io/address/0x22c36bfdcef207f9c0cc941936eff94d4246d14a#code
-pragma solidity 0.8.10;
+pragma solidity 0.8.11;
 
 // import {ChainlinkConsumer} from './ChainlinkConsumer.sol';
 // import {MockConsumerBase as VRFBase} from './VRFBase.sol';
@@ -25,23 +25,27 @@ contract Serum is ERC1155, Ownable, VRFBase {
     address private mutantsAddress;
     address private nftAddress;
 
-    mapping(uint256 => bool) public serumClaimed;
+    mapping(uint256 => bool) public claimed;
     mapping(uint256 => bool) private megaIds;
 
-    bool private megaIdsSet;
+    bool public megaIdsSet;
 
     constructor() ERC1155(baseURI) {}
 
     // ------------- External -------------
 
-    function claimSerum(uint256 tokenId) external whenNFTAddressSet {
+    function claimSerum(uint256 tokenId) public whenNFTAddressSet {
         require(NFT(nftAddress).ownerOf(tokenId) == msg.sender, 'NOT_CALLERS_NFT');
-        require(!serumClaimed[tokenId], 'SERUM_ALREADY_CLAIMED');
-        serumClaimed[tokenId] = true;
+        require(!claimed[tokenId], 'SERUM_ALREADY_CLAIMED');
+        claimed[tokenId] = true;
 
         uint256 serumType = tokenIdToSerumType(tokenId);
 
         _mint(msg.sender, serumType, 1, '');
+    }
+
+    function claimSerumBatch(uint256[] calldata tokenIds) external {
+        for (uint256 i; i < tokenIds.length; i++) claimSerum(tokenIds[i]);
     }
 
     // ------------- Restricted -------------
@@ -52,10 +56,6 @@ contract Serum is ERC1155, Ownable, VRFBase {
     }
 
     // ------------- Admin -------------
-
-    function requestRandomSeed() external onlyOwner whenRandomSeedUnset {
-        _requestRandomSeed();
-    }
 
     function setMegaSequence() public onlyOwner whenRandomSeedSet whenMegaIdsUnset {
         uint256 counter;
@@ -103,6 +103,10 @@ contract Serum is ERC1155, Ownable, VRFBase {
     function uri(uint256 id) public view override returns (string memory) {
         require(id < 3, 'INVALID_ID');
         return string(abi.encodePacked(baseURI, id.toString(), '.json'));
+    }
+
+    function claimActive() external view returns (bool) {
+        return nftAddress != address(0) && megaIdsSet;
     }
 
     // ------------- Modifier -------------

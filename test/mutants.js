@@ -59,14 +59,16 @@ describe('NFT contract', function () {
 
   describe('Owner', function () {
     it('Correct function access rights', async function () {
-      await expect(mutants.connect(user1).setPublicSaleState(0)).to.be.revertedWith('Ownable: caller is not the owner');
+      await expect(mutants.connect(user1).setPublicSaleActive(0)).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      );
       await expect(mutants.connect(user1).withdraw()).to.be.revertedWith('Ownable: caller is not the owner');
       await expect(mutants.connect(user1).setBaseURI('')).to.be.revertedWith('Ownable: caller is not the owner');
       // await expect(mutants.connect(user1).giveAway(user2.address, 1)).to.be.revertedWith(
       //   'Ownable: caller is not the owner'
       // );
 
-      await mutants.setPublicSaleState(true);
+      await mutants.setPublicSaleActive(true);
       await mutants.withdraw();
       await mutants.setBaseURI('');
     });
@@ -74,7 +76,7 @@ describe('NFT contract', function () {
 
   describe('Public Mint', function () {
     beforeEach(async function () {
-      await mutants.setPublicSaleState(true);
+      await mutants.setPublicSaleActive(true);
       expect(await mutants.publicSaleActive()).to.equal(true);
     });
 
@@ -88,7 +90,7 @@ describe('NFT contract', function () {
       expect(await mutants.ownerOf(2)).to.equal(user2.address);
 
       // stop sale
-      await mutants.setPublicSaleState(false);
+      await mutants.setPublicSaleActive(false);
       expect(await mutants.publicSaleActive()).to.equal(false);
 
       await expect(mutants.mint(1)).to.be.revertedWith('PUBLIC_SALE_NOT_ACTIVE');
@@ -116,7 +118,7 @@ describe('NFT contract', function () {
       // console.log(await serum.balanceOf(owner.address, 1));
       // console.log(await serum.balanceOf(owner.address, 2));
 
-      await mutants.setMutationsActiveState(true);
+      await mutants.setMutationsActive(true);
     });
 
     it('Can mutate correctly', async function () {
@@ -173,8 +175,8 @@ describe('NFT contract', function () {
     beforeEach(async function () {
       await nft.giveAway(owner.address, 10);
       await serum.mintBatch([0, 1, 2], [MAX_SUPPLY_M + 1, MAX_SUPPLY_M + 1, MAX_SUPPLY_M3 + 1]);
-      await mutants.setMutationsActiveState(true);
-      await mutants.setPublicSaleState(true);
+      await mutants.setMutationsActive(true);
+      await mutants.setPublicSaleActive(true);
     });
 
     it('Reveal can only happen once by owner', async function () {

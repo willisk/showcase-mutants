@@ -20,8 +20,8 @@ pragma solidity ^0.8.10;
 //                    ▟▘                           ▗▛
 //                   ▟▙▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▛
 //
-// Implementation of ERC721, with minimal adjustments:
-// _balances[] is removed
+// Lighter modification of ERC721, with some adjustments
+// Warning: Does not implement IERC721.
 
 import '@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol';
 import '@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol';
@@ -32,6 +32,14 @@ import '@openzeppelin/contracts/utils/Address.sol';
 import '@openzeppelin/contracts/utils/Strings.sol';
 
 /**
+ * @notice This implementation has some modifications compared to the standard ERC721.
+ * This should not be used unless the changes are understood.
+ * @dev Changes made to this contract:
+ * - `_balances` are not being tracked in order to save on gas.
+ * - `_owners` is internal, allowing for the super class to implement functions such as `balanceOf` and `tokenIdsOf`.
+ * - `balanceOf` is removed, meaning this contract doesn't follow the IERC721 standard. This could be implemented by
+ *  an inefficient loop until the maximum index, however this implementation is left to the super contract.
+ *
  * @dev Implementation of https://eips.ethereum.org/EIPS/eip-721[ERC721] Non-Fungible Token Standard, including
  * the Metadata extension, but not including the Enumerable extension, which is available separately as
  * {ERC721Enumerable}.
@@ -76,16 +84,17 @@ contract ERC721X is Context, ERC165, IERC721, IERC721Metadata {
             super.supportsInterface(interfaceId);
     }
 
-    // /**
-    //  * @dev See {IERC721-balanceOf}.
-    //  */
-    // function balanceOf(address owner) public view virtual override returns (uint256) {
-    //     require(owner != address(0), 'ERC721: balance query for the zero address');
-    //     uint256 count;
-    //     for (uint256 i; i < _owners.length; ++i) if (owner == _owners[i]) count++;
-    //     return count;
-    // }
-    function balanceOf(address owner) public view virtual override returns (uint256) {}
+    /**
+     * @dev See {IERC721-balanceOf}.
+     */
+    function balanceOf(address owner) public view virtual override returns (uint256) {
+        // require(owner != address(0), 'ERC721: balance query for the zero address');
+        // uint256 count;
+        // for (uint256 i; i < totalSupply; ++i) if (owner == _owners[i]) count++;
+        // return count;
+    }
+
+    // function balanceOf(address owner) public view virtual override returns (uint256) {}
 
     /**
      * @dev See {IERC721-ownerOf}.
@@ -308,6 +317,7 @@ contract ERC721X is Context, ERC165, IERC721, IERC721Metadata {
 
         // _balances[to] += 1;
         _owners[tokenId] = to;
+        // totalSupply++;
 
         emit Transfer(address(0), to, tokenId);
     }
