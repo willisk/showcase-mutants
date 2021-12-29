@@ -14,8 +14,8 @@ contract NFT is ERC721X, Ownable {
 
     event PublicSaleStateUpdate(bool active);
 
-    string public unrevealedURI = 'ipfs://XXX';
     string public baseURI;
+    string public unrevealedURI = 'ipfs://XXX';
 
     bool public publicSaleActive;
     bool public whitelistActive;
@@ -74,6 +74,40 @@ contract NFT is ERC721X, Ownable {
         _mintTo(msg.sender);
     }
 
+    // ------------- Internal -------------
+
+    function _mintTo(address to) internal {
+        uint256 tokenId = totalSupply;
+        require(tokenId < MAX_SUPPLY, 'MAX_SUPPLY_REACHED');
+
+        _mint(to, tokenId);
+        totalSupply++;
+    }
+
+    function _mintBatchTo(address to, uint256 amount) internal {
+        uint256 tokenId = totalSupply;
+        require(tokenId + amount <= MAX_SUPPLY, 'MAX_SUPPLY_REACHED');
+
+        for (uint256 i; i < amount; i++) _mint(to, tokenId + i);
+        totalSupply += amount;
+    }
+
+    function _validSignature(bytes memory signature, bytes32 data) internal view returns (bool) {
+        bytes32 msgHash = keccak256(abi.encode(address(this), data, msg.sender));
+        return msgHash.toEthSignedMessageHash().recover(signature) == _signerAddress;
+    }
+
+    // ------------- View -------------
+
+    function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
+        require(_exists(tokenId), 'ERC721Metadata: URI query for nonexistent token');
+
+        return
+            bytes(baseURI).length > 0
+                ? string(abi.encodePacked(baseURI, '/', tokenId.toString(), '.json'))
+                : unrevealedURI;
+    }
+
     // ------------- Admin -------------
 
     function giveAway(address to, uint256 amount) external onlyOwner {
@@ -107,47 +141,13 @@ contract NFT is ERC721X, Ownable {
 
     function withdraw() external onlyOwner {
         uint256 balance = address(this).balance;
-        (bool _success, ) = payable(msg.sender).call{value: balance}('');
+        payable(msg.sender).call{value: balance}('');
     }
 
     function recoverToken(IERC20 _token) external onlyOwner {
         uint256 balance = _token.balanceOf(address(this));
         bool _success = _token.transfer(owner(), balance);
         require(_success, 'TOKEN_TRANSFER_FAILED');
-    }
-
-    // ------------- View -------------
-
-    function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
-        require(_exists(tokenId), 'ERC721Metadata: URI query for nonexistent token');
-
-        return
-            bytes(baseURI).length > 0
-                ? string(abi.encodePacked(baseURI, '/', tokenId.toString(), '.json'))
-                : unrevealedURI;
-    }
-
-    // ------------- Internal -------------
-
-    function _mintTo(address to) internal {
-        uint256 tokenId = totalSupply;
-        require(tokenId < MAX_SUPPLY, 'MAX_SUPPLY_REACHED');
-
-        _mint(to, tokenId);
-        totalSupply++;
-    }
-
-    function _mintBatchTo(address to, uint256 amount) internal {
-        uint256 tokenId = totalSupply;
-        require(tokenId + amount <= MAX_SUPPLY, 'MAX_SUPPLY_REACHED');
-
-        for (uint256 i; i < amount; i++) _mint(to, tokenId + i);
-        totalSupply += amount;
-    }
-
-    function _validSignature(bytes memory signature, bytes32 data) internal view returns (bool) {
-        bytes32 msgHash = keccak256(abi.encode(address(this), data, msg.sender));
-        return msgHash.toEthSignedMessageHash().recover(signature) == _signerAddress;
     }
 
     // ------------- Modifier -------------
