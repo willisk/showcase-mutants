@@ -59,7 +59,6 @@ contract Mutants is ERC721X, Ownable, VRFBase {
 
     // ------------- External -------------
 
-    // XXX: add refund?
     function mint(uint256 amount) external payable whenPublicSaleActive onlyHuman {
         require(amount <= PURCHASE_LIMIT, 'EXCEEDS_LIMIT');
         require(msg.value == PRICE * amount, 'INCORRECT_VALUE');

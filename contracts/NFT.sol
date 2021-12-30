@@ -141,7 +141,7 @@ contract NFT is ERC721X, Ownable {
 
     function withdraw() external onlyOwner {
         uint256 balance = address(this).balance;
-        payable(msg.sender).call{value: balance}('');
+        payable(msg.sender).transfer(balance);
     }
 
     function recoverToken(IERC20 _token) external onlyOwner {
