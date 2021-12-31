@@ -23,6 +23,12 @@ async function main() {
   await serum.setNFTAddress(nft.address);
   await serum.setMutantsAddress(mutants.address);
 
+  const secretPass = ethers.utils.formatBytes32String('pass1234');
+  const secretHash = ethers.utils.keccak256(secretPass);
+
+  await mutants.setSecretHash(secretHash);
+  console.log('hash set, secret:', secretPass);
+
   // const nft = await NFT.attach('0x2af1bD945B025F901b9eD0Ec40400804b39d1320');
   // const mutants = await MUTANTS.attach('0x8409B1A5CC281c21d6232b46555C5C587698A9e7');
   // const serum = await SERUM.attach('0x1cFb131661e2e1e09047319fA9408fF1Cae0F985');
@@ -35,6 +41,13 @@ async function main() {
   await linkToken.connect(owner).transfer(mutants.address, ethers.utils.parseEther('1'));
 
   console.log('transferred Link');
+
+  await serum.mintBatch([0, 1, 2], [100, 100, 100]);
+  console.log('XXX', 'disable Serum mintBatch');
+  console.log('XXX', 'remove Serum mintBatch in deploy');
+  console.log('XXX', 'make sure link hash set');
+  console.log('XXX', 'make sure enough link is in the contract');
+  // console.log('XXX', 'enable requestMegaMutant in mutate');
 
   // contract.setBaseURI('ipfs://YYY');
 }

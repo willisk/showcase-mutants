@@ -7,7 +7,7 @@ provider = ethers.provider;
 
 const filterFirstEventArgs = (receipt, event) => receipt.events.filter((logs) => logs.event == event)[0].args;
 
-describe('NFT contract', function () {
+describe('Mutants contract', function () {
   let nft, mutants, serum;
   let user1, user2;
   let signers;
@@ -153,7 +153,7 @@ describe('NFT contract', function () {
       mutantId1 = OFFSET_M2.add(11);
       mutantId2 = OFFSET_M3.add(0); // mega mutant ids are minted in succession
       tx1 = await mutants.connect(user1).mutate(11, 1);
-      tx2 = await mutants.connect(user1).mutate(12, 2);
+      tx2 = await mutants.connect(user1).mutate(12, 2); // XXX: needs requestRandomMegaMutant to be disabled when testing
       tokenId1 = filterFirstEventArgs(await tx1.wait(), 'Transfer').tokenId;
       tokenId2 = filterFirstEventArgs(await tx2.wait(), 'Transfer').tokenId;
       expect(tokenId1).to.equal(mutantId1);

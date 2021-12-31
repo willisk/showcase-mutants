@@ -30,6 +30,10 @@ contract Mutants is ERC721X, Ownable, VRFBase {
 
     bool public publicSaleActive;
     bool public mutationsActive;
+    bool public mintRevealed;
+
+    bytes32 private _secretHash;
+    bytes32 private _secretSeed;
 
     uint256 public constant PRICE = 0.03 ether;
     uint256 public constant PURCHASE_LIMIT = 10;
@@ -51,10 +55,11 @@ contract Mutants is ERC721X, Ownable, VRFBase {
     uint256[] private _megaIdsLeft;
 
     mapping(uint256 => uint256) private _megaTokenIdFinal;
-    mapping(bytes32 => uint256) private requestIdToMegaId;
+    mapping(bytes32 => uint256) private _requestIdToMegaId;
 
-    constructor() ERC721X('Mutants', 'MUTX') {
+    constructor(bytes32 secretHash_) ERC721X('Mutants', 'MUTX') {
         for (uint256 i; i < MAX_SUPPLY_M3; i++) _megaIdsLeft.push(OFFSET_M3 + i);
+        _secretHash = secretHash_;
     }
 
     // ------------- External -------------
@@ -71,6 +76,7 @@ contract Mutants is ERC721X, Ownable, VRFBase {
     }
 
     // quirks:
+    // - number of mutants are not limited in code, but in the serum supply
     // - nfts can mutate multiple times with M3 serum
     // - mutants can be resurrected once burned
     // - total amount is only bound by number of available serums
@@ -95,7 +101,19 @@ contract Mutants is ERC721X, Ownable, VRFBase {
 
     // ------------- Admin -------------
 
-    function setBaseURI(string memory _baseURI) external onlyOwner {
+    // extra security for reveal
+    // the owner thinks of a secret seed (of which at first only the hash is revealed)
+    // once chainlink randomness fulfills, the secret is revealed and shifts the secret seed set by chainlink
+    // Why? Techies could read the code and grab the chainlink seed before the reveal.
+    // There is a time-frame in which an unfair advantage is gained after the seed is set and before the metadata is revealed.
+    // This eliminates any possibility of the team generating an unfair seed and any unfair advantage by snipers.
+    function reveal(string memory _baseURI, bytes32 secretSeed_) external onlyOwner whenRandomSeedSet {
+        require(_secretHash == keccak256(abi.encode(secretSeed_)), 'SECRET_HASH_DOES_NOT_MATCH');
+        _secretSeed = secretSeed_;
+        baseURI = _baseURI;
+    }
+
+    function setBaseURI(string memory _baseURI) external onlyOwner whenSecretSeedRevealed {
         baseURI = _baseURI;
     }
 
@@ -151,20 +169,16 @@ contract Mutants is ERC721X, Ownable, VRFBase {
     }
 
     // public mint and mega ids are reshuffled
-    function _metadataId(uint256 tokenId) internal view returns (uint256) {
-        if (tokenId < MAX_SUPPLY_PUBLIC) return (tokenId + _randomSeed) % MAX_SUPPLY_PUBLIC;
-        else if (tokenId >= OFFSET_M3) {
-            uint256 metadataId = _megaTokenIdFinal[tokenId];
-            require(metadataId != 0, 'METADATA_ID_NOT_SET'); // XXX: should this throw here?
-            return metadataId;
-        }
-        return tokenId;
-    }
-
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         require(_exists(tokenId), 'ERC721Metadata: URI query for nonexistent token');
-        if (!randomSeedSet()) return unrevealedURI;
-        uint256 metadataId = _metadataId(tokenId);
+        uint256 metadataId = tokenId;
+        if (tokenId < MAX_SUPPLY_PUBLIC) {
+            if (!randomSeedSet()) return unrevealedURI;
+            metadataId = (tokenId + _randomSeed) % MAX_SUPPLY_PUBLIC;
+        } else if (tokenId >= OFFSET_M3) {
+            metadataId = _megaTokenIdFinal[tokenId];
+            if (metadataId == 0) return unrevealedURI;
+        }
         return string(abi.encodePacked(baseURI, metadataId.toString(), '.json'));
     }
 
@@ -223,11 +237,11 @@ contract Mutants is ERC721X, Ownable, VRFBase {
     function requestRandomMegaMutant(uint256 tokenId) private {
         // XXX: needs to be tested!
         bytes32 requestId = _requestRandomSeed();
-        requestIdToMegaId[requestId] = tokenId; // signal that this is a request for the specific tokenId
+        _requestIdToMegaId[requestId] = tokenId; // signal that this is a request for the specific tokenId
     }
 
     function fulfillRandomness(bytes32 requestId, uint256 randomNumber) internal override {
-        uint256 tokenId = requestIdToMegaId[requestId];
+        uint256 tokenId = _requestIdToMegaId[requestId];
         if (tokenId == 0) _setRandomSeed(randomNumber);
         else _setMegaTokenId(tokenId, randomNumber);
     }
@@ -239,6 +253,11 @@ contract Mutants is ERC721X, Ownable, VRFBase {
     }
 
     // ------------- Modifier -------------
+
+    modifier whenSecretSeedRevealed() {
+        require(_secretSeed != bytes32(0), 'SECRET_HASH_UNREVEALED');
+        _;
+    }
 
     modifier whenPublicSaleActive() {
         require(publicSaleActive, 'PUBLIC_SALE_NOT_ACTIVE');
