@@ -82,10 +82,10 @@ contract Serum is ERC1155, Ownable, VRFBase {
         baseURI = _baseURI;
     }
 
-    // XXX: this is only used for testing and should be removed in production
-    function mintBatch(uint256[] memory ids, uint256[] memory amounts) external onlyOwner {
-        _mintBatch(owner(), ids, amounts, '');
-    }
+    // // XXX: this is only used for testing and should be removed in production
+    // function mintBatch(uint256[] memory ids, uint256[] memory amounts) external onlyOwner {
+    //     _mintBatch(owner(), ids, amounts, '');
+    // }
 
     // // functions from VRFBase:
     // function forceFulfillRandomness() external virtual onlyOwner {}

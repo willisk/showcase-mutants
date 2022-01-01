@@ -33,7 +33,7 @@ contract Mutants is ERC721X, Ownable, VRFBase {
     bool public mintRevealed;
 
     bytes32 private _secretHash;
-    bytes32 private _secretSeed;
+    bool public revealed;
 
     uint256 public constant PRICE = 0.03 ether;
     uint256 public constant PURCHASE_LIMIT = 10;
@@ -48,8 +48,8 @@ contract Mutants is ERC721X, Ownable, VRFBase {
     uint256 private constant MAX_ID = OFFSET_M3 + MAX_SUPPLY_M3;
 
     uint256 public numPublicMinted;
-    uint256 private numMutants; // XXX: this variable could be removed (saves 1 sstore on mutate())
-    uint256 private numMegaMutants;
+    // uint256 private numMutants; // XXX: this variable could be removed (saves 1 sstore on mutate())
+    uint256 public numMegaMutants;
 
     using ShuffleArray for uint256[];
     uint256[] private _megaIdsLeft;
@@ -86,10 +86,10 @@ contract Mutants is ERC721X, Ownable, VRFBase {
         uint256 tokenId;
         if (serumType == 0) {
             tokenId = OFFSET_M1 + nftId;
-            numMutants++;
+            // numMutants++;
         } else if (serumType == 1) {
             tokenId = OFFSET_M2 + nftId;
-            numMutants++;
+            // numMutants++;
         } else {
             tokenId = OFFSET_M3 + numMegaMutants;
             numMegaMutants++;
@@ -101,19 +101,23 @@ contract Mutants is ERC721X, Ownable, VRFBase {
 
     // ------------- Admin -------------
 
-    // extra security for reveal
-    // the owner thinks of a secret seed (of which at first only the hash is revealed)
+    // extra security for reveal:
+    // the owner sets a hash of a secret seed
     // once chainlink randomness fulfills, the secret is revealed and shifts the secret seed set by chainlink
-    // Why? Techies could read the code and grab the chainlink seed before the reveal.
+    // Why? The final randomness should come from a trusted third party,
+    // however techies could read the code and grab the chainlink seed before the reveal.
     // There is a time-frame in which an unfair advantage is gained after the seed is set and before the metadata is revealed.
     // This eliminates any possibility of the team generating an unfair seed and any unfair advantage by snipers.
     function reveal(string memory _baseURI, bytes32 secretSeed_) external onlyOwner whenRandomSeedSet {
+        require(!revealed, 'ALREADY_REVEALED');
         require(_secretHash == keccak256(abi.encode(secretSeed_)), 'SECRET_HASH_DOES_NOT_MATCH');
-        _secretSeed = secretSeed_;
+        revealed = true;
+        _randomSeed = uint256(keccak256(abi.encode(_randomSeed, secretSeed_)));
         baseURI = _baseURI;
     }
 
-    function setBaseURI(string memory _baseURI) external onlyOwner whenSecretSeedRevealed {
+    // requires that the reveal is first done through chainlink vrf
+    function setBaseURI(string memory _baseURI) external onlyOwner onceRevealed {
         baseURI = _baseURI;
     }
 
@@ -173,7 +177,7 @@ contract Mutants is ERC721X, Ownable, VRFBase {
         require(_exists(tokenId), 'ERC721Metadata: URI query for nonexistent token');
         uint256 metadataId = tokenId;
         if (tokenId < MAX_SUPPLY_PUBLIC) {
-            if (!randomSeedSet()) return unrevealedURI;
+            if (!revealed) return unrevealedURI;
             metadataId = (tokenId + _randomSeed) % MAX_SUPPLY_PUBLIC;
         } else if (tokenId >= OFFSET_M3) {
             metadataId = _megaTokenIdFinal[tokenId];
@@ -182,9 +186,10 @@ contract Mutants is ERC721X, Ownable, VRFBase {
         return string(abi.encodePacked(baseURI, metadataId.toString(), '.json'));
     }
 
-    function totalSupply() external view returns (uint256) {
-        return numPublicMinted + numMutants + numMegaMutants;
-    }
+    // removed to save on gas
+    // function totalSupply() external view returns (uint256) {
+    //     return numPublicMinted + numMutants + numMegaMutants;
+    // }
 
     function balanceOf(address owner) public view override returns (uint256) {
         return _balanceOfRange(owner, 0, MAX_ID);
@@ -235,7 +240,6 @@ contract Mutants is ERC721X, Ownable, VRFBase {
     // function _requestRandomSeed() internal virtual returns (bytes32) {}
 
     function requestRandomMegaMutant(uint256 tokenId) private {
-        // XXX: needs to be tested!
         bytes32 requestId = _requestRandomSeed();
         _requestIdToMegaId[requestId] = tokenId; // signal that this is a request for the specific tokenId
     }
@@ -254,8 +258,8 @@ contract Mutants is ERC721X, Ownable, VRFBase {
 
     // ------------- Modifier -------------
 
-    modifier whenSecretSeedRevealed() {
-        require(_secretSeed != bytes32(0), 'SECRET_HASH_UNREVEALED');
+    modifier onceRevealed() {
+        require(revealed, 'NOT_REVEALED_YET');
         _;
     }
 

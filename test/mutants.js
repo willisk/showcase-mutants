@@ -22,6 +22,9 @@ describe('Mutants contract', function () {
   let OFFSET_M1, OFFSET_M2, OFFSET_M3;
   // let MAX_TOTAL_SUPPLY;
 
+  const secretPass = ethers.utils.formatBytes32String('pass1234');
+  const secretHash = ethers.utils.keccak256(secretPass);
+
   beforeEach(async function () {
     [owner, user1, user2, ...signers] = await ethers.getSigners();
 
@@ -30,7 +33,7 @@ describe('Mutants contract', function () {
     const SERUM = await ethers.getContractFactory('Serum');
 
     nft = await NFT.deploy();
-    mutants = await MUTANTS.deploy();
+    mutants = await MUTANTS.deploy(secretHash);
     serum = await SERUM.deploy();
 
     await mutants.setSerumAddress(serum.address);
@@ -70,7 +73,7 @@ describe('Mutants contract', function () {
 
       await mutants.setPublicSaleActive(true);
       await mutants.withdraw();
-      await mutants.setBaseURI('');
+      // await mutants.setBaseURI('');
     });
   });
 
@@ -196,31 +199,52 @@ describe('Mutants contract', function () {
       await expect(mutants.forceFulfillRandomMegaMutant(mutantId)).to.be.revertedWith('MEGA_ID_ALREADY_SET');
     });
 
-    it('Mutants reveal correctly', async function () {
+    it('Public reveal logic is correct', async function () {
       await mutants.mint(1, { value: PRICE });
+      expect(await mutants.tokenURI(0)).to.equal('unrevealedURI');
+      await expect(mutants.setBaseURI('xxx')).to.be.revertedWith('NOT_REVEALED_YET');
 
-      mutantId = OFFSET_M1.add(0);
-      await mutants.mutate(0, 0);
-      expect(await mutants.tokenURI(mutantId)).to.equal('unrevealedURI');
+      await expect(mutants.reveal('revealedURI/', secretPass)).to.be.revertedWith('RANDOM_SEED_NOT_SET');
 
       await mutants.forceFulfillRandomness();
 
-      expect(await mutants.tokenURI(0)).to.not.equal(`baseURI/${0}.json`); // hard to check for a random assignment
+      expect(await mutants.tokenURI(0)).to.equal('unrevealedURI');
+
+      const invalidSecretPass = ethers.utils.formatBytes32String('abc');
+
+      await expect(mutants.reveal('revealedURI/', invalidSecretPass)).to.be.revertedWith('SECRET_HASH_DOES_NOT_MATCH');
+      await mutants.reveal('revealedURI/', secretPass);
+      await expect(mutants.reveal('revealedURI/', secretPass)).to.be.revertedWith('ALREADY_REVEALED');
+
+      expect(await mutants.tokenURI(0)).to.include('revealedURI/');
+      expect(await mutants.tokenURI(0)).to.not.equal('revealedURI/0.json'); // hard to check for a random assignment
+    });
+
+    it('Mutants reveal correctly', async function () {
+      mutantId = OFFSET_M1.add(0);
+      await mutants.mutate(0, 0);
+      expect(await mutants.tokenURI(mutantId)).to.equal(`baseURI/${mutantId}.json`);
+
+      mutantId = OFFSET_M1.add(1);
+      await mutants.mutate(1, 0);
+      expect(await mutants.tokenURI(mutantId)).to.equal(`baseURI/${mutantId}.json`);
+
+      mutantId = OFFSET_M2.add(2);
+      await mutants.mutate(2, 1);
+      expect(await mutants.tokenURI(mutantId)).to.equal(`baseURI/${mutantId}.json`);
+
+      mutantId = OFFSET_M2.add(3);
+      await mutants.mutate(3, 1);
       expect(await mutants.tokenURI(mutantId)).to.equal(`baseURI/${mutantId}.json`);
     });
 
     it('Mega Mutants reveal correctly', async function () {
-      mutantId = OFFSET_M3.add(0);
-      await mutants.mutate(7, 2);
-
-      // mega mutants are still only revealed after main reveal
+      mutantId = OFFSET_M3;
+      await mutants.mutate(3, 2);
       expect(await mutants.tokenURI(mutantId)).to.equal('unrevealedURI');
-      await mutants.forceFulfillRandomness();
 
-      await expect(mutants.tokenURI(mutantId)).to.be.revertedWith('METADATA_ID_NOT_SET');
       await mutants.forceFulfillRandomMegaMutant(mutantId);
-      await mutants.tokenURI(mutantId);
-      // console.log(await mutants.tokenURI(mutantId)); // will point to a random id.json
+      expect(await mutants.tokenURI(mutantId)).to.include('baseURI/30'); // will point to a random id.json
     });
   });
 });
