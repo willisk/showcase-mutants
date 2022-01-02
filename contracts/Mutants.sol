@@ -111,8 +111,8 @@ contract Mutants is ERC721X, Ownable, VRFBase {
     function reveal(string memory _baseURI, bytes32 secretSeed_) external onlyOwner whenRandomSeedSet {
         require(!revealed, 'ALREADY_REVEALED');
         require(_secretHash == keccak256(abi.encode(secretSeed_)), 'SECRET_HASH_DOES_NOT_MATCH');
+        _shiftRandomSeed(uint256(secretSeed_));
         revealed = true;
-        _randomSeed = uint256(keccak256(abi.encode(_randomSeed, secretSeed_)));
         baseURI = _baseURI;
     }
 
