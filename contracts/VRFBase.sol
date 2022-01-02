@@ -52,6 +52,11 @@ contract VRFBase is VRFConsumerBase, Ownable {
     }
 
     function _setRandomSeed(uint256 randomNumber) internal whenRandomSeedUnset {
+        _shiftRandomSeed(randomNumber);
+    }
+
+    function _shiftRandomSeed(uint256 randomNumber) internal {
+        randomNumber = uint256(keccak256(abi.encode(_randomSeed, randomNumber)));
         if (type(uint256).max - randomNumber < ceilGap) _randomSeed = randomNumber - ceilGap;
         else _randomSeed = randomNumber;
     }
