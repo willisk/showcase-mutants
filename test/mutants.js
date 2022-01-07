@@ -115,7 +115,7 @@ describe('Mutants contract', function () {
       await nft.giveAway(owner.address, 10);
       await nft.giveAway(user1.address, 3);
 
-      await serum.mintBatch([0, 1, 2], [MAX_SUPPLY_M + 1, MAX_SUPPLY_M + 1, MAX_SUPPLY_M3 + 1]);
+      await serum.mintBatchTest([0, 1, 2], [MAX_SUPPLY_M + 1, MAX_SUPPLY_M + 1, MAX_SUPPLY_M3 + 1]);
 
       // console.log(await serum.balanceOf(owner.address, 0));
       // console.log(await serum.balanceOf(owner.address, 1));
@@ -177,7 +177,7 @@ describe('Mutants contract', function () {
   describe('Reveal', function () {
     beforeEach(async function () {
       await nft.giveAway(owner.address, 10);
-      await serum.mintBatch([0, 1, 2], [MAX_SUPPLY_M + 1, MAX_SUPPLY_M + 1, MAX_SUPPLY_M3 + 1]);
+      await serum.mintBatchTest([0, 1, 2], [MAX_SUPPLY_M + 1, MAX_SUPPLY_M + 1, MAX_SUPPLY_M3 + 1]);
       await mutants.setMutationsActive(true);
       await mutants.setPublicSaleActive(true);
     });
