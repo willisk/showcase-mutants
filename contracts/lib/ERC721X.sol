@@ -44,7 +44,7 @@ import '@openzeppelin/contracts/utils/Strings.sol';
  * the Metadata extension, but not including the Enumerable extension, which is available separately as
  * {ERC721Enumerable}.
  */
-contract ERC721X is Context, ERC165, IERC721, IERC721Metadata {
+abstract contract ERC721X is Context, ERC165, IERC721, IERC721Metadata {
     using Address for address;
     using Strings for uint256;
 
@@ -84,15 +84,15 @@ contract ERC721X is Context, ERC165, IERC721, IERC721Metadata {
             super.supportsInterface(interfaceId);
     }
 
-    /**
-     * @dev See {IERC721-balanceOf}.
-     */
-    function balanceOf(address owner) public view virtual override returns (uint256) {
-        // require(owner != address(0), 'ERC721: balance query for the zero address');
-        // uint256 count;
-        // for (uint256 i; i < totalSupply; ++i) if (owner == _owners[i]) count++;
-        // return count;
-    }
+    // /**
+    //  * @dev See {IERC721-balanceOf}.
+    //  */
+    // function balanceOf(address owner) public view virtual override returns (uint256) {
+    //     // require(owner != address(0), 'ERC721: balance query for the zero address');
+    //     // uint256 count;
+    //     // for (uint256 i; i < totalSupply; ++i) if (owner == _owners[i]) count++;
+    //     // return count;
+    // }
 
     // function balanceOf(address owner) public view virtual override returns (uint256) {}
 

@@ -13,10 +13,10 @@ describe('NFT contract', function () {
   let user2;
   let signers;
 
-  let PRICE;
-  let WHITELIST_PRICE;
+  let price;
+  let whitelistPrice;
   let MAX_SUPPLY;
-  let PURCHASE_LIMIT;
+  let purchaseLimit;
 
   beforeEach(async function () {
     NFT = await ethers.getContractFactory('NFT');
@@ -24,10 +24,10 @@ describe('NFT contract', function () {
 
     contract = await NFT.deploy();
 
-    PRICE = await contract.PRICE();
-    WHITELIST_PRICE = await contract.WHITELIST_PRICE();
+    price = await contract.price();
+    whitelistPrice = await contract.whitelistPrice();
     MAX_SUPPLY = await contract.MAX_SUPPLY();
-    PURCHASE_LIMIT = await contract.PURCHASE_LIMIT();
+    purchaseLimit = await contract.purchaseLimit();
   });
 
   describe('Deployment', function () {
@@ -62,9 +62,9 @@ describe('NFT contract', function () {
     });
 
     it('Correct sale logic and minting ability', async function () {
-      await contract.mint(1, { value: PRICE });
-      await contract.connect(user2).mint(2, { value: PRICE.mul(BigNumber.from('2')) });
-      await expect(contract.mint(PURCHASE_LIMIT + 1)).to.be.revertedWith('EXCEEDS_LIMIT');
+      await contract.mint(1, { value: price });
+      await contract.connect(user2).mint(2, { value: price.mul(BigNumber.from('2')) });
+      await expect(contract.mint(purchaseLimit + 1)).to.be.revertedWith('EXCEEDS_LIMIT');
 
       expect(await contract.ownerOf(0)).to.equal(owner.address);
       expect(await contract.ownerOf(1)).to.equal(user2.address);
@@ -83,10 +83,10 @@ describe('NFT contract', function () {
 
     //   // mint all
     //   let tx;
-    //   for (let i = 0; i < MAX_SUPPLY; i++) tx = await contract.mint(1, { value: PRICE });
+    //   for (let i = 0; i < MAX_SUPPLY; i++) tx = await contract.mint(1, { value: price });
     //   await tx.wait();
 
-    //   await expect(contract.mint(1, { value: PRICE })).to.be.revertedWith('MAX_SUPPLY_REACHED');
+    //   await expect(contract.mint(1, { value: price })).to.be.revertedWith('MAX_SUPPLY_REACHED');
     // });
   });
 
@@ -155,7 +155,7 @@ describe('NFT contract', function () {
       await expect(contract.connect(user1).whitelistMint(1, invalidSig1)).to.be.revertedWith('NOT_WHITELISTED');
       await expect(contract.connect(user1).diamondlistMint(invalidSig2)).to.be.revertedWith('NOT_WHITELISTED');
 
-      await contract.connect(user1).whitelistMint(1, whitelistSig, { value: WHITELIST_PRICE });
+      await contract.connect(user1).whitelistMint(1, whitelistSig, { value: whitelistPrice });
       await contract.connect(user1).diamondlistMint(diamondlistSig);
 
       await expect(contract.connect(user1).whitelistMint(1, whitelistSig)).to.be.revertedWith('WHITELIST_USED');

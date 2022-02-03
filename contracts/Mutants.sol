@@ -5,7 +5,6 @@ pragma solidity 0.8.11;
 // import {ChainlinkConsumer} from './ChainlinkConsumer.sol';
 // import {MockConsumerBase as VRFBase} from './VRFBase.sol';
 // import {VRFBase} from './VRFBase.sol';
-import './VRFBase.sol';
 
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
@@ -13,14 +12,18 @@ import '@openzeppelin/contracts/access/Ownable.sol';
 // import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 
 import '@openzeppelin/contracts/utils/Strings.sol';
-import './ERC721X.sol';
 import './Serum.sol';
 import './NFT.sol';
+
+import './lib/ERC721X.sol';
+import './lib/ShuffleArray.sol';
+import './lib/VRFBase.sol';
 
 // import './Serum.sol';
 
 contract Mutants is ERC721X, Ownable, VRFBase {
     using Strings for uint256;
+    using ShuffleArray for uint256[];
 
     string public unrevealedURI = 'unrevealedURI';
     string public baseURI = 'baseURI/';
@@ -30,13 +33,12 @@ contract Mutants is ERC721X, Ownable, VRFBase {
 
     bool public publicSaleActive;
     bool public mutationsActive;
-    bool public mintRevealed;
 
     bytes32 private _secretHash;
     bool public revealed;
 
-    uint256 public constant PRICE = 0.03 ether;
-    uint256 public constant PURCHASE_LIMIT = 10;
+    uint256 public constant price = 0.03 ether;
+    uint256 public constant purchaseLimit = 10;
 
     uint256 public constant MAX_SUPPLY_PUBLIC = 1000;
     uint256 public constant MAX_SUPPLY_M = 1000;
@@ -51,7 +53,6 @@ contract Mutants is ERC721X, Ownable, VRFBase {
     // uint256 private numMutants; // XXX: this variable could be removed (saves 1 sstore on mutate())
     uint256 public numMegaMutants;
 
-    using ShuffleArray for uint256[];
     uint256[] private _megaIdsLeft;
 
     mapping(uint256 => uint256) private _megaTokenIdFinal;
@@ -64,9 +65,9 @@ contract Mutants is ERC721X, Ownable, VRFBase {
 
     // ------------- External -------------
 
-    function mint(uint256 amount) external payable whenPublicSaleActive onlyHuman {
-        require(amount <= PURCHASE_LIMIT, 'EXCEEDS_LIMIT');
-        require(msg.value == PRICE * amount, 'INCORRECT_VALUE');
+    function mint(uint256 amount) external payable whenPublicSaleActive noContract {
+        require(amount <= purchaseLimit, 'EXCEEDS_LIMIT');
+        require(msg.value == price * amount, 'INCORRECT_VALUE');
 
         uint256 tokenId = numPublicMinted;
         require(tokenId + amount <= MAX_SUPPLY_PUBLIC, 'MAX_SUPPLY_REACHED');
@@ -80,7 +81,7 @@ contract Mutants is ERC721X, Ownable, VRFBase {
     // - nfts can mutate multiple times with M3 serum
     // - mutants can be resurrected once burned
     // - total amount is only bound by number of available serums
-    function mutate(uint256 nftId, uint256 serumType) external whenMutationsActive onlyHuman {
+    function mutate(uint256 nftId, uint256 serumType) external whenMutationsActive noContract {
         require(NFT(nftAddress).ownerOf(nftId) == msg.sender, 'NOT_CALLERS_TOKEN');
         require(serumType < 3, 'INVALID_SERUM_TYPE');
         uint256 tokenId;
@@ -175,14 +176,17 @@ contract Mutants is ERC721X, Ownable, VRFBase {
     // public mint and mega ids are reshuffled
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         require(_exists(tokenId), 'ERC721Metadata: URI query for nonexistent token');
+        if (!revealed) return unrevealedURI;
+
         uint256 metadataId = tokenId;
-        if (tokenId < MAX_SUPPLY_PUBLIC) {
-            if (!revealed) return unrevealedURI;
-            metadataId = (tokenId + _randomSeed) % MAX_SUPPLY_PUBLIC;
-        } else if (tokenId >= OFFSET_M3) {
+
+        // if (tokenId < MAX_SUPPLY_PUBLIC) metadataId = (tokenId + _randomSeed) % MAX_SUPPLY_PUBLIC;
+        if (tokenId < MAX_SUPPLY_PUBLIC) ShuffleArray.getShuffledRangeAt(tokenId, MAX_SUPPLY_PUBLIC, _randomSeed);
+        else if (tokenId >= OFFSET_M3) {
             metadataId = _megaTokenIdFinal[tokenId];
-            if (metadataId == 0) return unrevealedURI;
+            if (metadataId == 0) return unrevealedURI; // chainlink hasn't revealed yet
         }
+
         return string(abi.encodePacked(baseURI, metadataId.toString(), '.json'));
     }
 
@@ -273,7 +277,7 @@ contract Mutants is ERC721X, Ownable, VRFBase {
         _;
     }
 
-    modifier onlyHuman() {
+    modifier noContract() {
         require(tx.origin == msg.sender, 'CONTRACT_CALL');
         _;
     }

@@ -12,8 +12,8 @@ describe('Mutants contract', function () {
   let user1, user2;
   let signers;
 
-  let PRICE;
-  let PURCHASE_LIMIT;
+  let price;
+  let purchaseLimit;
 
   let MAX_SUPPLY_PUBLIC;
   let MAX_SUPPLY_M;
@@ -40,8 +40,8 @@ describe('Mutants contract', function () {
     await mutants.setNFTAddress(nft.address);
     await serum.setMutantsAddress(mutants.address);
 
-    PRICE = await mutants.PRICE();
-    PURCHASE_LIMIT = await mutants.PURCHASE_LIMIT();
+    price = await mutants.price();
+    purchaseLimit = await mutants.purchaseLimit();
 
     MAX_SUPPLY_PUBLIC = await mutants.MAX_SUPPLY_PUBLIC();
     MAX_SUPPLY_M = await mutants.MAX_SUPPLY_M();
@@ -84,9 +84,9 @@ describe('Mutants contract', function () {
     });
 
     it('Correct sale logic and minting ability', async function () {
-      await mutants.mint(1, { value: PRICE });
-      await mutants.connect(user2).mint(2, { value: PRICE.mul(BigNumber.from('2')) });
-      await expect(mutants.mint(PURCHASE_LIMIT + 1)).to.be.revertedWith('EXCEEDS_LIMIT');
+      await mutants.mint(1, { value: price });
+      await mutants.connect(user2).mint(2, { value: price.mul(BigNumber.from('2')) });
+      await expect(mutants.mint(purchaseLimit + 1)).to.be.revertedWith('EXCEEDS_LIMIT');
 
       expect(await mutants.ownerOf(0)).to.equal(owner.address);
       expect(await mutants.ownerOf(1)).to.equal(user2.address);
@@ -103,10 +103,10 @@ describe('Mutants contract', function () {
     // it('Correct total mintable supply', async function () {
     //   // mint all
     //   let tx;
-    //   for (let i = 0; i < MAX_SUPPLY_PUBLIC.toNumber(); i++) tx = await mutants.mint(1, { value: PRICE });
+    //   for (let i = 0; i < MAX_SUPPLY_PUBLIC.toNumber(); i++) tx = await mutants.mint(1, { value: price });
     //   await tx.wait();
 
-    //   await expect(mutants.mint(1, { value: PRICE })).to.be.revertedWith('MAX_SUPPLY_REACHED');
+    //   await expect(mutants.mint(1, { value: price })).to.be.revertedWith('MAX_SUPPLY_REACHED');
     // });
   });
 
@@ -200,7 +200,7 @@ describe('Mutants contract', function () {
     });
 
     it('Public reveal logic is correct', async function () {
-      await mutants.mint(1, { value: PRICE });
+      await mutants.mint(1, { value: price });
       expect(await mutants.tokenURI(0)).to.equal('unrevealedURI');
       await expect(mutants.setBaseURI('xxx')).to.be.revertedWith('NOT_REVEALED_YET');
 

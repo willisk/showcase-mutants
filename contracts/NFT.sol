@@ -6,15 +6,16 @@ pragma solidity 0.8.11;
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/utils/cryptography/ECDSA.sol';
-import './ERC721X.sol';
+import './lib/ERC721X.sol';
 
 contract NFT is ERC721X, Ownable {
     using ECDSA for bytes32;
     using Strings for uint256;
 
-    event PublicSaleStateUpdate(bool active);
+    event SaleStateUpdate(bool active);
 
     string public baseURI;
+    // string public baseURI = 'ipfs://QmeSjSinHpPnmXmspMjwiXyN6zS4E9zccariGR3jxcaWtq/';
     string public unrevealedURI = 'ipfs://XXX';
 
     bool public publicSaleActive;
@@ -24,11 +25,11 @@ contract NFT is ERC721X, Ownable {
     uint256 public totalSupply;
     uint256 public constant MAX_SUPPLY = 1000;
 
-    uint256 public constant PRICE = 0.03 ether;
-    uint256 public constant PURCHASE_LIMIT = 10;
+    uint256 public constant price = 0.03 ether;
+    uint256 public constant purchaseLimit = 2;
 
-    uint256 public constant WHITELIST_PRICE = 0.03 ether;
-    uint256 public constant WHITELIST_PURCHASE_LIMIT = 2;
+    uint256 public constant whitelistPrice = 0.03 ether;
+    uint256 public constant whitelistPurchaseLimit = 2;
 
     mapping(address => bool) private _whitelistUsed;
     mapping(address => bool) private _diamondlistUsed;
@@ -42,11 +43,11 @@ contract NFT is ERC721X, Ownable {
 
     // ------------- External -------------
 
-    function mint(uint256 amount) external payable whenPublicSaleActive onlyHuman {
-        require(amount <= PURCHASE_LIMIT, 'EXCEEDS_LIMIT');
-        require(msg.value == PRICE * amount, 'INCORRECT_VALUE');
+    function mint(uint256 amount) external payable whenPublicSaleActive noContract {
+        require(amount <= purchaseLimit, 'EXCEEDS_LIMIT');
+        require(msg.value == price * amount, 'INCORRECT_VALUE');
 
-        _mintBatchTo(msg.sender, amount);
+        _mintBatch(msg.sender, amount);
     }
 
     function whitelistMint(uint256 amount, bytes memory signature)
@@ -54,12 +55,12 @@ contract NFT is ERC721X, Ownable {
         payable
         whenWhitelistActive
         onlyWhitelisted(signature)
-        onlyHuman
+        noContract
     {
-        require(amount <= WHITELIST_PURCHASE_LIMIT, 'EXCEEDS_LIMIT');
-        require(msg.value == WHITELIST_PRICE * amount, 'INCORRECT_VALUE');
+        require(amount <= whitelistPurchaseLimit, 'EXCEEDS_LIMIT');
+        require(msg.value == whitelistPrice * amount, 'INCORRECT_VALUE');
 
-        _mintBatchTo(msg.sender, amount);
+        _mintBatch(msg.sender, amount);
     }
 
     function diamondlistMint(bytes memory signature)
@@ -67,26 +68,19 @@ contract NFT is ERC721X, Ownable {
         payable
         whenDiamondlistActive
         onlyDiamondlisted(signature)
-        onlyHuman
+        noContract
     {
         uint256 tokenId = totalSupply;
         require(tokenId < MAX_SUPPLY, 'MAX_SUPPLY_REACHED');
-        _mintTo(msg.sender);
+        _mintBatch(msg.sender, 1);
     }
 
     // ------------- Internal -------------
 
-    function _mintTo(address to) internal {
-        uint256 tokenId = totalSupply;
-        require(tokenId < MAX_SUPPLY, 'MAX_SUPPLY_REACHED');
-
-        _mint(to, tokenId);
-        totalSupply++;
-    }
-
-    function _mintBatchTo(address to, uint256 amount) internal {
+    function _mintBatch(address to, uint256 amount) internal {
         uint256 tokenId = totalSupply;
         require(tokenId + amount <= MAX_SUPPLY, 'MAX_SUPPLY_REACHED');
+        require(amount > 0, 'MUST_BE_GREATER_0');
 
         for (uint256 i; i < amount; i++) _mint(to, tokenId + i);
         totalSupply += amount;
@@ -110,8 +104,8 @@ contract NFT is ERC721X, Ownable {
 
     // ------------- Admin -------------
 
-    function giveAway(address to, uint256 amount) external onlyOwner {
-        _mintBatchTo(to, amount);
+    function giveAway(address[] calldata accounts) external onlyOwner {
+        for (uint256 i; i < accounts.length; i++) _mintBatch(accounts[i], 1);
     }
 
     function setSignerAddress(address _address) external onlyOwner {
@@ -128,7 +122,7 @@ contract NFT is ERC721X, Ownable {
 
     function setPublicSaleActive(bool active) external onlyOwner {
         publicSaleActive = active;
-        emit PublicSaleStateUpdate(active);
+        emit SaleStateUpdate(active);
     }
 
     function setBaseURI(string memory _baseURI) external onlyOwner {
@@ -141,13 +135,12 @@ contract NFT is ERC721X, Ownable {
 
     function withdraw() external onlyOwner {
         uint256 balance = address(this).balance;
-        payable(msg.sender).transfer(balance);
+        msg.sender.call{value: balance}('');
     }
 
-    function recoverToken(IERC20 _token) external onlyOwner {
-        uint256 balance = _token.balanceOf(address(this));
-        bool _success = _token.transfer(owner(), balance);
-        require(_success, 'TOKEN_TRANSFER_FAILED');
+    function recoverToken(IERC20 token) external onlyOwner {
+        uint256 balance = token.balanceOf(address(this));
+        token.transfer(owner(), balance);
     }
 
     // ------------- Modifier -------------
@@ -167,7 +160,7 @@ contract NFT is ERC721X, Ownable {
         _;
     }
 
-    modifier onlyHuman() {
+    modifier noContract() {
         require(tx.origin == msg.sender, 'CONTRACT_CALL');
         _;
     }

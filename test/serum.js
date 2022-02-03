@@ -12,7 +12,7 @@ describe('Serum contract', function () {
   let user1, user2;
   let signers;
 
-  let PRICE;
+  let price;
 
   let MAX_SUPPLY_NFT, M2_CHANCE_PER_CENT, MAX_SUPPLY_M3;
 
@@ -34,7 +34,7 @@ describe('Serum contract', function () {
     MAX_SUPPLY_M3 = await serum.MAX_SUPPLY_M3();
     M2_CHANCE_PER_CENT = await serum.M2_CHANCE_PER_CENT();
 
-    PRICE = await nft.PRICE();
+    price = await nft.price();
   });
 
   describe('Deployment', function () {
@@ -71,7 +71,7 @@ describe('Serum contract', function () {
     it('Correct claim logic', async function () {
       await expect(serum.claimSerum(0)).to.be.revertedWith('ERC721: owner query for nonexistent token');
 
-      await nft.mint(1, { value: PRICE });
+      await nft.mint(1, { value: price });
 
       await expect(serum.connect(user1).claimSerum(0)).to.be.revertedWith('NOT_CALLERS_NFT');
       await expect(serum.claimSerum(0)).to.be.revertedWith('MEGA_IDS_NOT_SET');

@@ -13,4 +13,21 @@ library ShuffleArray {
         uint256 randomIndex = randomNumber % self.length;
         return remove(self, randomIndex);
     }
+
+    function getShuffledRangeAt(
+        uint256 index,
+        uint256 max,
+        uint256 seed
+    ) internal pure returns (uint256) {
+        uint256[] memory shuffled = new uint256[](max);
+
+        for (uint256 i; i < max; i++) shuffled[i] = i;
+
+        for (uint256 i; i < max; i++) {
+            uint256 j = uint256(keccak256(abi.encode(seed, i))) % max;
+            (shuffled[i], shuffled[j]) = (shuffled[j], shuffled[i]);
+        }
+
+        return shuffled[index];
+    }
 }
