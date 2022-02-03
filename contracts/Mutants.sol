@@ -216,8 +216,10 @@ contract Mutants is ERC721X, Ownable, VRFBase {
     }
 
     function tokenIdsOf(address owner) external view returns (uint256[] memory) {
+        require(owner != address(0), 'ERC721: query for the zero address');
         uint256[] memory ids = new uint256[](balanceOf(owner));
-        for (uint256 i; i < MAX_ID; i++) if (owner == _owners[i]) ids[i] = i;
+        uint256 count;
+        for (uint256 i; i < MAX_ID; i++) if (owner == _owners[i]) ids[count++] = i;
         return ids;
     }
 
@@ -243,7 +245,7 @@ contract Mutants is ERC721X, Ownable, VRFBase {
 
     // function _requestRandomSeed() internal virtual returns (bytes32) {}
 
-    function requestRandomMegaMutant(uint256 tokenId) private {
+    function requestRandomMegaMutant(uint256 tokenId) internal virtual {
         bytes32 requestId = _requestRandomSeed();
         _requestIdToMegaId[requestId] = tokenId; // signal that this is a request for the specific tokenId
     }

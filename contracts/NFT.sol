@@ -190,8 +190,10 @@ contract NFT is ERC721X, Ownable {
     }
 
     function tokenIdsOf(address owner) public view returns (uint256[] memory) {
+        require(owner != address(0), 'ERC721: query for the zero address');
         uint256[] memory tokenIds = new uint256[](balanceOf(owner));
-        for (uint256 i; i < totalSupply; ++i) if (owner == _owners[i]) tokenIds[i] = i;
+        uint256 count;
+        for (uint256 i; i < totalSupply; ++i) if (owner == _owners[i]) tokenIds[count++] = i;
         return tokenIds;
     }
 }

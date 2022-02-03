@@ -29,8 +29,8 @@ describe('Mutants contract', function () {
     [owner, user1, user2, ...signers] = await ethers.getSigners();
 
     const NFT = await ethers.getContractFactory('NFT');
-    const MUTANTS = await ethers.getContractFactory('Mutants');
-    const SERUM = await ethers.getContractFactory('Serum');
+    const MUTANTS = await ethers.getContractFactory('MockMutants');
+    const SERUM = await ethers.getContractFactory('MockSerum');
 
     nft = await NFT.deploy();
     mutants = await MUTANTS.deploy(secretHash);
@@ -112,8 +112,8 @@ describe('Mutants contract', function () {
 
   describe('Mutation', function () {
     beforeEach(async function () {
-      await nft.giveAway(owner.address, 10);
-      await nft.giveAway(user1.address, 3);
+      await nft.giveAway([...Array(10)].map((_, i) => owner.address));
+      await nft.giveAway([...Array(3)].map((_, i) => user1.address));
 
       await serum.mintBatchTest([0, 1, 2], [MAX_SUPPLY_M + 1, MAX_SUPPLY_M + 1, MAX_SUPPLY_M3 + 1]);
 
@@ -176,7 +176,7 @@ describe('Mutants contract', function () {
 
   describe('Reveal', function () {
     beforeEach(async function () {
-      await nft.giveAway(owner.address, 10);
+      await nft.giveAway([...Array(10)].map((_, i) => owner.address));
       await serum.mintBatchTest([0, 1, 2], [MAX_SUPPLY_M + 1, MAX_SUPPLY_M + 1, MAX_SUPPLY_M3 + 1]);
       await mutants.setMutationsActive(true);
       await mutants.setPublicSaleActive(true);
@@ -221,30 +221,36 @@ describe('Mutants contract', function () {
     });
 
     it('Mutants reveal correctly', async function () {
+      await mutants.forceFulfillRandomness();
+      await mutants.reveal('revealedURI/', secretPass);
+
       mutantId = OFFSET_M1.add(0);
       await mutants.mutate(0, 0);
-      expect(await mutants.tokenURI(mutantId)).to.equal(`baseURI/${mutantId}.json`);
+      expect(await mutants.tokenURI(mutantId)).to.equal(`revealedURI/${mutantId}.json`);
 
       mutantId = OFFSET_M1.add(1);
       await mutants.mutate(1, 0);
-      expect(await mutants.tokenURI(mutantId)).to.equal(`baseURI/${mutantId}.json`);
+      expect(await mutants.tokenURI(mutantId)).to.equal(`revealedURI/${mutantId}.json`);
 
       mutantId = OFFSET_M2.add(2);
       await mutants.mutate(2, 1);
-      expect(await mutants.tokenURI(mutantId)).to.equal(`baseURI/${mutantId}.json`);
+      expect(await mutants.tokenURI(mutantId)).to.equal(`revealedURI/${mutantId}.json`);
 
       mutantId = OFFSET_M2.add(3);
       await mutants.mutate(3, 1);
-      expect(await mutants.tokenURI(mutantId)).to.equal(`baseURI/${mutantId}.json`);
+      expect(await mutants.tokenURI(mutantId)).to.equal(`revealedURI/${mutantId}.json`);
     });
 
     it('Mega Mutants reveal correctly', async function () {
+      await mutants.forceFulfillRandomness();
+      await mutants.reveal('revealedURI/', secretPass);
+
       mutantId = OFFSET_M3;
       await mutants.mutate(3, 2);
       expect(await mutants.tokenURI(mutantId)).to.equal('unrevealedURI');
 
       await mutants.forceFulfillRandomMegaMutant(mutantId);
-      expect(await mutants.tokenURI(mutantId)).to.include('baseURI/30'); // will point to a random id.json
+      expect(await mutants.tokenURI(mutantId)).to.include('revealedURI/30'); // will point to a random id.json
     });
   });
 });

@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import '@chainlink/contracts/src/v0.8/VRFConsumerBase.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
-import './lib/ShuffleArray.sol';
+import './ShuffleArray.sol';
 
 contract VRFBase is VRFConsumerBase, Ownable {
     bytes32 private keyHash = 0x2ed0feb3e7fd2022120aa84fab1945545a9f2ffc9076fd6156fa96eaff4c1311; // Rinkeby

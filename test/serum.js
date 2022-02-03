@@ -20,7 +20,7 @@ describe('Serum contract', function () {
     [owner, user1, user2, ...signers] = await ethers.getSigners();
 
     const NFT = await ethers.getContractFactory('NFT');
-    const SERUM = await ethers.getContractFactory('Serum');
+    const SERUM = await ethers.getContractFactory('MockSerum');
     // const MUTANTS = await ethers.getContractFactory('Mutants');
 
     nft = await NFT.deploy();

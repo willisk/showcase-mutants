@@ -4,7 +4,7 @@ pragma solidity 0.8.11;
 
 // import {ChainlinkConsumer} from './ChainlinkConsumer.sol';
 // import {MockConsumerBase as VRFBase} from './VRFBase.sol';
-import './VRFBase.sol';
+import './lib/VRFBase.sol';
 
 import '@openzeppelin/contracts/token/ERC1155/ERC1155.sol';
 import '@openzeppelin/contracts/utils/Strings.sol';
@@ -81,11 +81,6 @@ contract Serum is ERC1155, Ownable, VRFBase {
     function setBaseURI(string memory _baseURI) external onlyOwner {
         baseURI = _baseURI;
     }
-
-    // // XXX: this is only used for testing and should be removed in production
-    // function mintBatchTest(uint256[] memory ids, uint256[] memory amounts) external onlyOwner {
-    //     _mintBatch(owner(), ids, amounts, '');
-    // }
 
     // // functions from VRFBase:
     // function forceFulfillRandomness() external virtual onlyOwner {}
