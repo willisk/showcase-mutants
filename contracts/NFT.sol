@@ -22,12 +22,12 @@ contract NFT is ERC721X, Ownable, VRFBase {
     bool public diamondlistActive;
 
     uint256 public totalSupply;
-    uint256 public constant MAX_SUPPLY = 1000;
+    uint256 public constant MAX_SUPPLY = 10000;
 
     uint256 public price = 0.03 ether;
-    uint256 public purchaseLimit = 2;
+    uint256 public purchaseLimit = 3;
 
-    uint256 public whitelistPrice = 0.03 ether;
+    uint256 public whitelistPrice = 0.02 ether;
     uint256 public whitelistPurchaseLimit = 2;
 
     mapping(address => bool) private _whitelistUsed;
