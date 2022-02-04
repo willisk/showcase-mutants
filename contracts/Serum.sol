@@ -18,10 +18,11 @@ contract Serum is ERC1155, Ownable, VRFBase {
     uint256 public constant MAX_SUPPLY_NFT = 1000;
     uint256 public constant MAX_SUPPLY_M3 = 10;
     uint256 constant TEAM_RESERVE = 5;
+    uint256 private teamClaimed;
 
     uint256 public constant M2_CHANCE_PER_CENT = 33;
 
-    string public baseURI = 'ipfs://XXX/';
+    string public baseURI = 'ipfs://QmdtARLUPQeqXrVcNzQuRqr9UCFoFvn76X9cdTczt4vqfw/';
 
     address private mutantsAddress;
     address private nftAddress;
@@ -32,7 +33,7 @@ contract Serum is ERC1155, Ownable, VRFBase {
     bool public megaIdsSet;
 
     constructor() ERC1155(baseURI) {
-        _mint(msg.sender, 2, TEAM_RESERVE, '');
+        // _mint(msg.sender, 2, TEAM_RESERVE, '');
     }
 
     // ------------- External -------------
@@ -76,6 +77,14 @@ contract Serum is ERC1155, Ownable, VRFBase {
         megaIdsSet = true;
     }
 
+    // XXX add tests
+    function claimMegaId(uint256 tokenId) external onlyOwner {
+        require(tokenId < MAX_SUPPLY_NFT, 'OUT_OF_BOUNDS');
+        require(teamClaimed < TEAM_RESERVE, 'OUT_OF_BOUNDS');
+        megaIds[tokenId] = true;
+        teamClaimed++;
+    }
+
     function setNFTAddress(address _address) external onlyOwner {
         nftAddress = _address;
     }
@@ -104,7 +113,10 @@ contract Serum is ERC1155, Ownable, VRFBase {
 
     function uri(uint256 id) public view override returns (string memory) {
         require(id < 3, 'INVALID_ID');
-        return string(abi.encodePacked(baseURI, id.toString(), '.json'));
+        if (id == 2) id = 69;
+        return string(abi.encodePacked(baseURI, id.toString()));
+        // XXX YYY ZZZ restore
+        // return string(abi.encodePacked(baseURI, id.toString(), '.json'));
     }
 
     function claimActive() external view returns (bool) {

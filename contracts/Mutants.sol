@@ -24,8 +24,7 @@ contract Mutants is ERC721X, Ownable, VRFBase {
     using ShuffleArray for uint256[];
 
     string public unrevealedURI = 'unrevealedURI';
-    string public baseURI = 'baseURI/';
-    // https://boredapeyachtclub.com/api/mutants/
+    string public baseURI = 'https://boredapeyachtclub.com/api/mutants/';
 
     address private nftAddress;
     address private serumAddress;
@@ -36,8 +35,8 @@ contract Mutants is ERC721X, Ownable, VRFBase {
     uint256 public constant price = 0.03 ether;
     uint256 public constant purchaseLimit = 10;
 
-    uint256 public constant MAX_SUPPLY_PUBLIC = 1000;
-    uint256 public constant MAX_SUPPLY_M = 1000;
+    uint256 public constant MAX_SUPPLY_PUBLIC = 10000;
+    uint256 public constant MAX_SUPPLY_M = 10000;
     uint256 public constant MAX_SUPPLY_M3 = 10;
 
     uint256 private constant OFFSET_M1 = MAX_SUPPLY_PUBLIC;
@@ -53,7 +52,7 @@ contract Mutants is ERC721X, Ownable, VRFBase {
     mapping(uint256 => uint256) private _megaTokenIdFinal;
     mapping(bytes32 => uint256) private _requestIdToMegaId;
 
-    constructor() ERC721X('Mutants', 'MUTX') {
+    constructor() ERC721X('Shinobi Mutant Bunny', 'SNBM') {
         for (uint256 i; i < MAX_SUPPLY_M3; i++) _megaIdsLeft.push(OFFSET_M3 + i);
     }
 

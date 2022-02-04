@@ -38,7 +38,8 @@ async function main() {
 
   console.log('XXX', 'make sure correct link hash set');
   console.log('XXX', 'make sure enough link is in the contract');
-  console.log('XXX', 'add in .json ending to tokenURI');
+  console.log('XXX', 'add in .json ending to tokenURI (nft, mutants, serum)');
+  console.log('XXX', 'remove -> 69 serum');
 
   // contract.setBaseURI('ipfs://YYY');
 }

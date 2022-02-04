@@ -13,8 +13,7 @@ contract NFT is ERC721X, Ownable, VRFBase {
 
     event SaleStateUpdate(bool active);
 
-    string public baseURI;
-    // string public baseURI = 'ipfs://QmeSjSinHpPnmXmspMjwiXyN6zS4E9zccariGR3jxcaWtq/';
+    string public baseURI = 'ipfs://QmeSjSinHpPnmXmspMjwiXyN6zS4E9zccariGR3jxcaWtq/';
     string public unrevealedURI = 'ipfs://XXX';
 
     bool public publicSaleActive;
@@ -24,11 +23,11 @@ contract NFT is ERC721X, Ownable, VRFBase {
     uint256 public totalSupply;
     uint256 public constant MAX_SUPPLY = 10000;
 
-    uint256 public price = 0.03 ether;
+    uint256 public price = 0.1 ether;
     uint256 public purchaseLimit = 3;
 
-    uint256 public whitelistPrice = 0.02 ether;
-    uint256 public whitelistPurchaseLimit = 2;
+    uint256 public whitelistPrice = 0.1 ether;
+    uint256 public whitelistPurchaseLimit = 1;
 
     mapping(address => bool) private _whitelistUsed;
     mapping(address => bool) private _diamondlistUsed;
@@ -38,7 +37,7 @@ contract NFT is ERC721X, Ownable, VRFBase {
     uint256 private constant SIGNED_DATA_WHITELIST = 69;
     uint256 private constant SIGNED_DATA_DIAMONDLIST = 1337;
 
-    constructor() ERC721X('MyNFTXXX', 'NFTXXX') {}
+    constructor() ERC721X('Shinobi Bunny', 'SNB') {}
 
     // ------------- External -------------
 
