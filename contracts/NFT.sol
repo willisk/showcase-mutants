@@ -1,14 +1,13 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
-// import "hardhat/console.sol";
-
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/utils/cryptography/ECDSA.sol';
 import './lib/ERC721X.sol';
+import './lib/VRFBase.sol';
 
-contract NFT is ERC721X, Ownable {
+contract NFT is ERC721X, Ownable, VRFBase {
     using ECDSA for bytes32;
     using Strings for uint256;
 
@@ -25,11 +24,11 @@ contract NFT is ERC721X, Ownable {
     uint256 public totalSupply;
     uint256 public constant MAX_SUPPLY = 1000;
 
-    uint256 public constant price = 0.03 ether;
-    uint256 public constant purchaseLimit = 2;
+    uint256 public price = 0.03 ether;
+    uint256 public purchaseLimit = 2;
 
-    uint256 public constant whitelistPrice = 0.03 ether;
-    uint256 public constant whitelistPurchaseLimit = 2;
+    uint256 public whitelistPrice = 0.03 ether;
+    uint256 public whitelistPurchaseLimit = 2;
 
     mapping(address => bool) private _whitelistUsed;
     mapping(address => bool) private _diamondlistUsed;
@@ -70,14 +69,12 @@ contract NFT is ERC721X, Ownable {
         onlyDiamondlisted(signature)
         noContract
     {
-        uint256 tokenId = totalSupply;
-        require(tokenId < MAX_SUPPLY, 'MAX_SUPPLY_REACHED');
         _mintBatch(msg.sender, 1);
     }
 
-    // ------------- Internal -------------
+    // ------------- Private -------------
 
-    function _mintBatch(address to, uint256 amount) internal {
+    function _mintBatch(address to, uint256 amount) private {
         uint256 tokenId = totalSupply;
         require(tokenId + amount <= MAX_SUPPLY, 'MAX_SUPPLY_REACHED');
         require(amount > 0, 'MUST_BE_GREATER_0');
@@ -86,20 +83,25 @@ contract NFT is ERC721X, Ownable {
         totalSupply += amount;
     }
 
-    function _validSignature(bytes memory signature, bytes32 data) internal view returns (bool) {
+    function _validSignature(bytes memory signature, bytes32 data) private view returns (bool) {
         bytes32 msgHash = keccak256(abi.encode(address(this), data, msg.sender));
         return msgHash.toEthSignedMessageHash().recover(signature) == _signerAddress;
     }
 
     // ------------- View -------------
 
-    function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
+    function metadataIdOf(uint256 tokenId) public view returns (uint256) {
+        return ShuffleArray.getShuffledRangeAt(tokenId, MAX_SUPPLY, _randomSeed);
+    }
+
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
         require(_exists(tokenId), 'ERC721Metadata: URI query for nonexistent token');
 
-        return
-            bytes(baseURI).length > 0
-                ? string(abi.encodePacked(baseURI, '/', tokenId.toString(), '.json'))
-                : unrevealedURI;
+        if (!randomSeedSet() || bytes(baseURI).length == 0) return unrevealedURI;
+        uint256 metadataId = metadataIdOf(tokenId);
+        return string(abi.encodePacked(baseURI, metadataId.toString()));
+        // XXX YYY ZZZ add back in
+        // return string(abi.encodePacked(baseURI, metadataId.toString(), '.json'));
     }
 
     // ------------- Admin -------------
@@ -108,8 +110,24 @@ contract NFT is ERC721X, Ownable {
         for (uint256 i; i < accounts.length; i++) _mintBatch(accounts[i], 1);
     }
 
-    function setSignerAddress(address _address) external onlyOwner {
-        _signerAddress = _address;
+    function setPrice(uint256 price_) external onlyOwner {
+        price = price_;
+    }
+
+    function setWhitelistPrice(uint256 price_) external onlyOwner {
+        whitelistPrice = price_;
+    }
+
+    function setPurchaseLimit(uint256 limit) external onlyOwner {
+        purchaseLimit = limit;
+    }
+
+    function setWhitelistPurchaseLimit(uint256 limit) external onlyOwner {
+        whitelistPurchaseLimit = limit;
+    }
+
+    function setSignerAddress(address address_) external onlyOwner {
+        _signerAddress = address_;
     }
 
     function setWhitelistActive(bool active) external onlyOwner {
@@ -124,6 +142,10 @@ contract NFT is ERC721X, Ownable {
         publicSaleActive = active;
         emit SaleStateUpdate(active);
     }
+
+    // function reveal(string memory _baseURI) external onlyOwner {
+    //     baseURI = _baseURI;
+    // }
 
     function setBaseURI(string memory _baseURI) external onlyOwner {
         baseURI = _baseURI;
@@ -165,7 +187,6 @@ contract NFT is ERC721X, Ownable {
         _;
     }
 
-    // await signer.signMessage(_ethers.utils.arrayify(_ethers.utils.keccak256(_ethers.utils.defaultAbiCoder.encode(['address', 'address'], ['<contract>', '<user>']))))
     modifier onlyDiamondlisted(bytes memory signature) {
         require(_validSignature(signature, bytes32(SIGNED_DATA_DIAMONDLIST)), 'NOT_WHITELISTED');
         require(!_diamondlistUsed[msg.sender], 'WHITELIST_USED');
@@ -190,7 +211,6 @@ contract NFT is ERC721X, Ownable {
     }
 
     function tokenIdsOf(address owner) public view returns (uint256[] memory) {
-        require(owner != address(0), 'ERC721: query for the zero address');
         uint256[] memory tokenIds = new uint256[](balanceOf(owner));
         uint256 count;
         for (uint256 i; i < totalSupply; ++i) if (owner == _owners[i]) tokenIds[count++] = i;

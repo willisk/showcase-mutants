@@ -8,8 +8,6 @@ pragma solidity 0.8.11;
 
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
-// import '@openzeppelin/contracts/security/Pausable.sol';
-// import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 
 import '@openzeppelin/contracts/utils/Strings.sol';
 import './Serum.sol';
@@ -27,15 +25,13 @@ contract Mutants is ERC721X, Ownable, VRFBase {
 
     string public unrevealedURI = 'unrevealedURI';
     string public baseURI = 'baseURI/';
+    // https://boredapeyachtclub.com/api/mutants/
 
     address private nftAddress;
     address private serumAddress;
 
     bool public publicSaleActive;
     bool public mutationsActive;
-
-    bytes32 private _secretHash;
-    bool public revealed;
 
     uint256 public constant price = 0.03 ether;
     uint256 public constant purchaseLimit = 10;
@@ -50,7 +46,6 @@ contract Mutants is ERC721X, Ownable, VRFBase {
     uint256 private constant MAX_ID = OFFSET_M3 + MAX_SUPPLY_M3;
 
     uint256 public numPublicMinted;
-    // uint256 private numMutants; // XXX: this variable could be removed (saves 1 sstore on mutate())
     uint256 public numMegaMutants;
 
     uint256[] private _megaIdsLeft;
@@ -58,9 +53,8 @@ contract Mutants is ERC721X, Ownable, VRFBase {
     mapping(uint256 => uint256) private _megaTokenIdFinal;
     mapping(bytes32 => uint256) private _requestIdToMegaId;
 
-    constructor(bytes32 secretHash_) ERC721X('Mutants', 'MUTX') {
+    constructor() ERC721X('Mutants', 'MUTX') {
         for (uint256 i; i < MAX_SUPPLY_M3; i++) _megaIdsLeft.push(OFFSET_M3 + i);
-        _secretHash = secretHash_;
     }
 
     // ------------- External -------------
@@ -100,25 +94,79 @@ contract Mutants is ERC721X, Ownable, VRFBase {
         if (serumType == 2) requestRandomMegaMutant(tokenId);
     }
 
-    // ------------- Admin -------------
+    // ------------- View -------------
 
-    // extra security for reveal:
-    // the owner sets a hash of a secret seed
-    // once chainlink randomness fulfills, the secret is revealed and shifts the secret seed set by chainlink
-    // Why? The final randomness should come from a trusted third party,
-    // however techies could read the code and grab the chainlink seed before the reveal.
-    // There is a time-frame in which an unfair advantage is gained after the seed is set and before the metadata is revealed.
-    // This eliminates any possibility of the team generating an unfair seed and any unfair advantage by snipers.
-    function reveal(string memory _baseURI, bytes32 secretSeed_) external onlyOwner whenRandomSeedSet {
-        require(!revealed, 'ALREADY_REVEALED');
-        require(_secretHash == keccak256(abi.encode(secretSeed_)), 'SECRET_HASH_DOES_NOT_MATCH');
-        _shiftRandomSeed(uint256(secretSeed_));
-        revealed = true;
-        baseURI = _baseURI;
+    // assumes proper input, view only
+    function canMutate(uint256 nftId, uint256 serumType) external view returns (bool) {
+        uint256 tokenId;
+        if (serumType == 0) tokenId = OFFSET_M1 + nftId;
+        else if (serumType == 1) tokenId = OFFSET_M2 + nftId;
+        else tokenId = OFFSET_M3 + numMegaMutants;
+        return !_exists(tokenId);
     }
 
-    // requires that the reveal is first done through chainlink vrf
-    function setBaseURI(string memory _baseURI) external onlyOwner onceRevealed {
+    // public mint and mega ids are reshuffled
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        require(_exists(tokenId), 'ERC721Metadata: URI query for nonexistent token');
+
+        if (!randomSeedSet() || bytes(baseURI).length == 0) return unrevealedURI;
+
+        uint256 metadataId = tokenId;
+
+        if (tokenId < MAX_SUPPLY_PUBLIC)
+            metadataId = ShuffleArray.getShuffledRangeAt(tokenId, MAX_SUPPLY_PUBLIC, _randomSeed);
+        else if (tokenId >= OFFSET_M3) {
+            metadataId = _megaTokenIdFinal[tokenId];
+            if (metadataId == 0) return unrevealedURI; // chainlink hasn't revealed yet
+        } else {
+            uint256 offset = tokenId >= OFFSET_M2 ? OFFSET_M2 : OFFSET_M1;
+            uint256 nftId = tokenId - offset;
+            metadataId = NFT(nftAddress).metadataIdOf(nftId) + offset; // shuffled metadataId
+        }
+
+        return string(abi.encodePacked(baseURI, metadataId.toString()));
+        // XXX YYY ZZZ add back in
+        // return string(abi.encodePacked(baseURI, metadataId.toString(), '.json'));
+    }
+
+    function balanceOf(address owner) public view override returns (uint256) {
+        require(owner != address(0), 'ERC721: balance query for the zero address');
+        uint256 balance;
+        for (uint256 i; i < MAX_ID; i++) if (owner == _owners[i]) balance++;
+        return balance;
+    }
+
+    function tokenIdsOf(address owner) external view returns (uint256[] memory) {
+        uint256[] memory ids = new uint256[](balanceOf(owner));
+        uint256 count;
+        for (uint256 i; i < MAX_ID; i++) if (owner == _owners[i]) ids[count++] = i;
+        return ids;
+    }
+
+    // ------------- Internal -------------
+
+    // function _requestRandomSeed() internal virtual returns (bytes32) {}
+
+    function requestRandomMegaMutant(uint256 tokenId) internal virtual {
+        bytes32 requestId = _requestRandomSeed();
+        _requestIdToMegaId[requestId] = tokenId; // signal that this is a request for the specific tokenId
+    }
+
+    function fulfillRandomness(bytes32 requestId, uint256 randomNumber) internal override {
+        uint256 tokenId = _requestIdToMegaId[requestId];
+        if (tokenId == 0) _setRandomSeed(randomNumber);
+        else _setMegaTokenId(tokenId, randomNumber);
+    }
+
+    function _setMegaTokenId(uint256 tokenId, uint256 randomNumber) private {
+        require(_exists(tokenId), 'MEGA_ID_NOT_FOUND');
+        require(_megaTokenIdFinal[tokenId] == 0, 'MEGA_ID_ALREADY_SET');
+        _megaTokenIdFinal[tokenId] = _megaIdsLeft.nextRandomElement(randomNumber);
+    }
+
+    // ------------- Owner -------------
+
+    function setBaseURI(string memory _baseURI) external onlyOwner {
         baseURI = _baseURI;
     }
 
@@ -144,13 +192,12 @@ contract Mutants is ERC721X, Ownable, VRFBase {
 
     function withdraw() external onlyOwner {
         uint256 balance = address(this).balance;
-        payable(msg.sender).transfer(balance);
+        msg.sender.call{value: balance}('');
     }
 
     function recoverToken(IERC20 _token) external onlyOwner {
         uint256 balance = _token.balanceOf(address(this));
-        bool _success = _token.transfer(owner(), balance);
-        require(_success, 'TOKEN_TRANSFER_FAILED');
+        _token.transfer(msg.sender, balance);
     }
 
     // function forceFulfillRandomness() external virtual onlyOwner whenRandomSeedUnset {}
@@ -162,112 +209,7 @@ contract Mutants is ERC721X, Ownable, VRFBase {
         _setMegaTokenId(mutantId, randomNumber);
     }
 
-    // ------------- View -------------
-
-    // assumes proper input, view only
-    function canMutate(uint256 nftId, uint256 serumType) external view returns (bool) {
-        uint256 tokenId;
-        if (serumType == 0) tokenId = OFFSET_M1 + nftId;
-        else if (serumType == 1) tokenId = OFFSET_M2 + nftId;
-        else tokenId = OFFSET_M3 + numMegaMutants;
-        return !_exists(tokenId);
-    }
-
-    // public mint and mega ids are reshuffled
-    function tokenURI(uint256 tokenId) public view override returns (string memory) {
-        require(_exists(tokenId), 'ERC721Metadata: URI query for nonexistent token');
-        if (!revealed) return unrevealedURI;
-
-        uint256 metadataId = tokenId;
-
-        // if (tokenId < MAX_SUPPLY_PUBLIC) metadataId = (tokenId + _randomSeed) % MAX_SUPPLY_PUBLIC;
-        if (tokenId < MAX_SUPPLY_PUBLIC) ShuffleArray.getShuffledRangeAt(tokenId, MAX_SUPPLY_PUBLIC, _randomSeed);
-        else if (tokenId >= OFFSET_M3) {
-            metadataId = _megaTokenIdFinal[tokenId];
-            if (metadataId == 0) return unrevealedURI; // chainlink hasn't revealed yet
-        }
-
-        return string(abi.encodePacked(baseURI, metadataId.toString(), '.json'));
-    }
-
-    // removed to save on gas
-    // function totalSupply() external view returns (uint256) {
-    //     return numPublicMinted + numMutants + numMegaMutants;
-    // }
-
-    function balanceOf(address owner) public view override returns (uint256) {
-        return _balanceOfRange(owner, 0, MAX_ID);
-    }
-
-    function balanceOfM0(address owner) external view returns (uint256) {
-        return _balanceOfRange(owner, 0, OFFSET_M1);
-    }
-
-    function balanceOfM1(address owner) external view returns (uint256) {
-        return _balanceOfRange(owner, OFFSET_M1, OFFSET_M2);
-    }
-
-    function balanceOfM2(address owner) external view returns (uint256) {
-        return _balanceOfRange(owner, OFFSET_M2, OFFSET_M3);
-    }
-
-    function balanceOfM3(address owner) external view returns (uint256) {
-        return _balanceOfRange(owner, OFFSET_M3, MAX_ID);
-    }
-
-    function tokenIdsOf(address owner) external view returns (uint256[] memory) {
-        require(owner != address(0), 'ERC721: query for the zero address');
-        uint256[] memory ids = new uint256[](balanceOf(owner));
-        uint256 count;
-        for (uint256 i; i < MAX_ID; i++) if (owner == _owners[i]) ids[count++] = i;
-        return ids;
-    }
-
-    // function getMutantId(uint256 apeId, uint256 serumType) external view returns (uint256) {
-    //     require(serumType < 3, 'INVALID_SERUM_TYPE');
-    //     if (serumType == 0) return OFFSET_M1 + apeId;
-    //     else if (serumType == 1) return OFFSET_M2 + apeId;
-    //     else return OFFSET_M3 + numMegaMutants;
-    // }
-
-    // ------------- Internal -------------
-
-    function _balanceOfRange(
-        address owner,
-        uint256 start,
-        uint256 end
-    ) private view returns (uint256) {
-        require(owner != address(0), 'ERC721: balance query for the zero address');
-        uint256 balance;
-        for (uint256 i = start; i < end; i++) if (owner == _owners[i]) balance++;
-        return balance;
-    }
-
-    // function _requestRandomSeed() internal virtual returns (bytes32) {}
-
-    function requestRandomMegaMutant(uint256 tokenId) internal virtual {
-        bytes32 requestId = _requestRandomSeed();
-        _requestIdToMegaId[requestId] = tokenId; // signal that this is a request for the specific tokenId
-    }
-
-    function fulfillRandomness(bytes32 requestId, uint256 randomNumber) internal override {
-        uint256 tokenId = _requestIdToMegaId[requestId];
-        if (tokenId == 0) _setRandomSeed(randomNumber);
-        else _setMegaTokenId(tokenId, randomNumber);
-    }
-
-    function _setMegaTokenId(uint256 tokenId, uint256 randomNumber) private {
-        require(_exists(tokenId), 'MEGA_ID_NOT_FOUND');
-        require(_megaTokenIdFinal[tokenId] == 0, 'MEGA_ID_ALREADY_SET');
-        _megaTokenIdFinal[tokenId] = _megaIdsLeft.nextRandomElement(randomNumber);
-    }
-
     // ------------- Modifier -------------
-
-    modifier onceRevealed() {
-        require(revealed, 'NOT_REVEALED_YET');
-        _;
-    }
 
     modifier whenPublicSaleActive() {
         require(publicSaleActive, 'PUBLIC_SALE_NOT_ACTIVE');

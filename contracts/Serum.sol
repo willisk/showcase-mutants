@@ -17,6 +17,7 @@ contract Serum is ERC1155, Ownable, VRFBase {
 
     uint256 public constant MAX_SUPPLY_NFT = 1000;
     uint256 public constant MAX_SUPPLY_M3 = 10;
+    uint256 constant TEAM_RESERVE = 5;
 
     uint256 public constant M2_CHANCE_PER_CENT = 33;
 
@@ -30,11 +31,14 @@ contract Serum is ERC1155, Ownable, VRFBase {
 
     bool public megaIdsSet;
 
-    constructor() ERC1155(baseURI) {}
+    constructor() ERC1155(baseURI) {
+        _mint(msg.sender, 2, TEAM_RESERVE, '');
+    }
 
     // ------------- External -------------
 
-    function claimSerum(uint256 tokenId) public whenNFTAddressSet {
+    function claimSerum(uint256 tokenId) public {
+        require(nftAddress != address(0), 'NFT_ADDRESS_NOT_SET');
         require(NFT(nftAddress).ownerOf(tokenId) == msg.sender, 'NOT_CALLERS_NFT');
         require(!claimed[tokenId], 'SERUM_ALREADY_CLAIMED');
         claimed[tokenId] = true;
@@ -50,16 +54,18 @@ contract Serum is ERC1155, Ownable, VRFBase {
 
     // ------------- Restricted -------------
 
-    function burnSerumOf(address owner, uint256 id) external whenMutantsAddressSet {
+    function burnSerumOf(address owner, uint256 id) external {
+        require(mutantsAddress != address(0), 'MUTANTS_ADDRESS_NOT_SET');
         require(msg.sender == mutantsAddress, 'CALLER_NOT_ALLOWED');
         _burn(owner, id, 1);
     }
 
     // ------------- Admin -------------
 
-    function setMegaSequence() public onlyOwner whenRandomSeedSet whenMegaIdsUnset {
+    function setMegaSequence() public onlyOwner whenRandomSeedSet {
+        require(!megaIdsSet, 'MEGA_IDS_SET');
         uint256 counter;
-        for (uint256 i; i < MAX_SUPPLY_M3; i++) {
+        for (uint256 i; i < MAX_SUPPLY_M3 - TEAM_RESERVE; i++) {
             uint256 nextMegaId;
             do {
                 nextMegaId = uint256(keccak256(abi.encode(_randomSeed, counter))) % MAX_SUPPLY_NFT;
@@ -88,7 +94,8 @@ contract Serum is ERC1155, Ownable, VRFBase {
 
     // ------------- View -------------
 
-    function tokenIdToSerumType(uint256 tokenId) public view whenMegaIdsSet returns (uint256) {
+    function tokenIdToSerumType(uint256 tokenId) public view returns (uint256) {
+        require(megaIdsSet, 'MEGA_IDS_NOT_SET');
         if (megaIds[tokenId]) return 2;
         uint256 randomNumber = uint256(keccak256(abi.encode(_randomSeed, tokenId))) % 100;
         if (randomNumber < M2_CHANCE_PER_CENT) return 1;
@@ -102,27 +109,5 @@ contract Serum is ERC1155, Ownable, VRFBase {
 
     function claimActive() external view returns (bool) {
         return nftAddress != address(0) && megaIdsSet;
-    }
-
-    // ------------- Modifier -------------
-
-    modifier whenMegaIdsSet() {
-        require(megaIdsSet, 'MEGA_IDS_NOT_SET');
-        _;
-    }
-
-    modifier whenMegaIdsUnset() {
-        require(!megaIdsSet, 'MEGA_IDS_SET');
-        _;
-    }
-
-    modifier whenMutantsAddressSet() {
-        require(mutantsAddress != address(0), 'MUTANTS_ADDRESS_NOT_SET');
-        _;
-    }
-
-    modifier whenNFTAddressSet() {
-        require(nftAddress != address(0), 'NFT_ADDRESS_NOT_SET');
-        _;
     }
 }

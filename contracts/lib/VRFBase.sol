@@ -13,7 +13,7 @@ contract VRFBase is VRFConsumerBase, Ownable {
     // uint256 private fee = 0.0001 * 10**18; // Mumbai
 
     // random number must leave this much space to max uint256 to safely calculate offsets
-    uint256 private ceilGap = 100000;
+    // uint256 private ceilGap = 100000;
 
     uint256 internal _randomSeed;
 
@@ -26,7 +26,7 @@ contract VRFBase is VRFConsumerBase, Ownable {
         )
     {}
 
-    // ------------- Admin -------------
+    // ------------- Owner -------------
 
     function requestRandomSeed() external virtual onlyOwner whenRandomSeedUnset {
         _requestRandomSeed();
@@ -57,8 +57,9 @@ contract VRFBase is VRFConsumerBase, Ownable {
 
     function _shiftRandomSeed(uint256 randomNumber) internal {
         randomNumber = uint256(keccak256(abi.encode(_randomSeed, randomNumber)));
-        if (type(uint256).max - randomNumber < ceilGap) _randomSeed = randomNumber - ceilGap;
-        else _randomSeed = randomNumber;
+        // if (type(uint256).max - randomNumber < ceilGap) _randomSeed = randomNumber - ceilGap;
+        // else
+        _randomSeed = randomNumber;
     }
 
     // ------------- View -------------

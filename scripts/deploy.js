@@ -5,9 +5,6 @@ const erc20Interface = ['function transfer(address to, uint256 amount)'];
 // const linkToken = new ethers.Contract('0x326C977E6efc84E512bB9C30f76E30c160eD06FB', erc20Interface); // Mumbai
 const linkToken = new ethers.Contract('0x01BE23585060835E02B77ef475b0Cc51aA1e0709', erc20Interface); // Rinkeby
 
-const secretPass = ethers.utils.formatBytes32String('pass1234');
-const secretHash = ethers.utils.keccak256(secretPass);
-
 async function main() {
   [owner] = await ethers.getSigners();
 
@@ -18,10 +15,8 @@ async function main() {
   const SERUM = await ethers.getContractFactory('Serum');
 
   const nft = await NFT.deploy();
-  const mutants = await MUTANTS.deploy(secretHash);
+  const mutants = await MUTANTS.deploy();
   const serum = await SERUM.deploy();
-
-  console.log('hash set, secret:', secretPass);
 
   await mutants.setSerumAddress(serum.address);
   await mutants.setNFTAddress(nft.address);
@@ -41,12 +36,9 @@ async function main() {
 
   console.log('transferred Link');
 
-  // await serum.mintBatch([0, 1, 2], [100, 100, 100]);
-  // console.log('XXX', 'disable Serum mintBatch');
-  // console.log('XXX', 'remove Serum mintBatch in deploy');
   console.log('XXX', 'make sure correct link hash set');
   console.log('XXX', 'make sure enough link is in the contract');
-  // console.log('XXX', 'enable requestMegaMutant in mutate');
+  console.log('XXX', 'add in .json ending to tokenURI');
 
   // contract.setBaseURI('ipfs://YYY');
 }
