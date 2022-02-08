@@ -9,8 +9,8 @@ import './lib/VRFBase.sol';
 import '@openzeppelin/contracts/token/ERC1155/ERC1155.sol';
 import '@openzeppelin/contracts/utils/Strings.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
-import './Mutants.sol';
-import './NFT.sol';
+import './ShinobiMutantBunny.sol';
+import './ShinobiBunny.sol';
 
 contract Serum is ERC1155, Ownable, VRFBase {
     using Strings for uint256;
@@ -22,7 +22,8 @@ contract Serum is ERC1155, Ownable, VRFBase {
 
     uint256 public constant M2_CHANCE_PER_CENT = 33;
 
-    string public baseURI = 'ipfs://QmdtARLUPQeqXrVcNzQuRqr9UCFoFvn76X9cdTczt4vqfw/';
+    // string public baseURI = 'ipfs://QmdtARLUPQeqXrVcNzQuRqr9UCFoFvn76X9cdTczt4vqfw/';
+    string public baseURI = 'ipfs://QmcAi1kUkENxp4FgKgGvj6AxCaAgqD624SRUFPALrZYSJW/';
 
     address private mutantsAddress;
     address private nftAddress;

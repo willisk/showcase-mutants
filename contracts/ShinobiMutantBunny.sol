@@ -11,20 +11,20 @@ import '@openzeppelin/contracts/access/Ownable.sol';
 
 import '@openzeppelin/contracts/utils/Strings.sol';
 import './Serum.sol';
-import './NFT.sol';
+import './ShinobiBunny.sol';
 
 import './lib/ERC721X.sol';
 import './lib/ShuffleArray.sol';
 import './lib/VRFBase.sol';
 
-// import './Serum.sol';
-
 contract Mutants is ERC721X, Ownable, VRFBase {
     using Strings for uint256;
     using ShuffleArray for uint256[];
 
-    string public unrevealedURI = 'unrevealedURI';
-    string public baseURI = 'https://boredapeyachtclub.com/api/mutants/';
+    // string public baseURI = 'https://boredapeyachtclub.com/api/mutants/';
+
+    string public baseURI = 'ipfs://QmPRaSqJw8MayGd3VhLGFPJHTXZbUEmDtEBRkEnjTTQYu9/';
+    string public unrevealedURI = 'QmPkpXpasMVtpeZB3nTvKkMHuRyJQ6ozbnbkbUU8YsLVDB/nrc3.json';
 
     address private nftAddress;
     address private serumAddress;

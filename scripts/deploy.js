@@ -15,8 +15,11 @@ async function main() {
   const SERUM = await ethers.getContractFactory('Serum');
 
   const nft = await NFT.deploy();
+  await nft.deployed();
   const mutants = await MUTANTS.deploy();
+  await mutants.deployed();
   const serum = await SERUM.deploy();
+  await serum.deployed();
 
   await mutants.setSerumAddress(serum.address);
   await mutants.setNFTAddress(nft.address);

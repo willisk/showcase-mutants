@@ -13,8 +13,10 @@ contract NFT is ERC721X, Ownable, VRFBase {
 
     event SaleStateUpdate(bool active);
 
-    string public baseURI = 'ipfs://QmeSjSinHpPnmXmspMjwiXyN6zS4E9zccariGR3jxcaWtq/';
-    string public unrevealedURI = 'ipfs://XXX';
+    // string public baseURI = 'ipfs://QmeSjSinHpPnmXmspMjwiXyN6zS4E9zccariGR3jxcaWtq/';    // bored apes
+
+    string public baseURI = 'ipfs://QmWSVnifGtw1dP899H5Kpc3mCfGniJFHPPUQ1oVU2dMzb1/';
+    string public unrevealedURI = 'ipfs://QmWL66K1gmEjVWtHNsxkx3HtHL7EqWEcabvyJU6249ByRF/nrc1.json';
 
     bool public publicSaleActive;
     bool public whitelistActive;

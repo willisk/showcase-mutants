@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
-import '../Mutants.sol';
+import '../ShinobiMutantBunny.sol';
 
 contract MockMutants is Mutants {
     function requestRandomMegaMutant(uint256 tokenId) internal override {
