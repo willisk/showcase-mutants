@@ -77,8 +77,8 @@ module.exports = {
     timeout: 0,
   },
   etherscan: {
-    // apiKey: process.env.ETHERSCAN_KEY,
-    apiKey: process.env.BSCSCAN_KEY,
+    apiKey: process.env.ETHERSCAN_KEY,
+    // apiKey: process.env.BSCSCAN_KEY,
     // apiKey: process.env.SNOWTRACE_KEY,
     // apiKey: process.env.POLYGONSCAN_KEY,
   },
