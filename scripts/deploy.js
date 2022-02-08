@@ -2,8 +2,8 @@ const hre = require('hardhat');
 const { ethers } = require('hardhat');
 
 const erc20Interface = ['function transfer(address to, uint256 amount)'];
-// const linkToken = new ethers.Contract('0x326C977E6efc84E512bB9C30f76E30c160eD06FB', erc20Interface); // Mumbai
-const linkToken = new ethers.Contract('0x01BE23585060835E02B77ef475b0Cc51aA1e0709', erc20Interface); // Rinkeby
+const linkToken = new ethers.Contract('0x326C977E6efc84E512bB9C30f76E30c160eD06FB', erc20Interface); // Mumbai
+// const linkToken = new ethers.Contract('0x01BE23585060835E02B77ef475b0Cc51aA1e0709', erc20Interface); // Rinkeby
 
 async function main() {
   [owner] = await ethers.getSigners();
@@ -15,11 +15,11 @@ async function main() {
   const SERUM = await ethers.getContractFactory('Serum');
 
   const nft = await NFT.deploy();
-  await nft.deployed();
+  // await nft.deployed();
   const mutants = await MUTANTS.deploy();
-  await mutants.deployed();
+  // await mutants.deployed();
   const serum = await SERUM.deploy();
-  await serum.deployed();
+  // await serum.deployed();
 
   await mutants.setSerumAddress(serum.address);
   await mutants.setNFTAddress(nft.address);

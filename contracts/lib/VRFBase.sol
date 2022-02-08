@@ -6,8 +6,8 @@ import '@openzeppelin/contracts/access/Ownable.sol';
 import './ShuffleArray.sol';
 
 contract VRFBase is VRFConsumerBase, Ownable {
-    bytes32 private keyHash = 0x2ed0feb3e7fd2022120aa84fab1945545a9f2ffc9076fd6156fa96eaff4c1311; // Rinkeby
-    // bytes32 private keyHash = 0x6e75b569a01ef56d18cab6a8e71e6600d6ce853834d4a5748b720d06f878b3a4; // Mumbai
+    // bytes32 private keyHash = 0x2ed0feb3e7fd2022120aa84fab1945545a9f2ffc9076fd6156fa96eaff4c1311; // Rinkeby
+    bytes32 private keyHash = 0x6e75b569a01ef56d18cab6a8e71e6600d6ce853834d4a5748b720d06f878b3a4; // Mumbai
 
     uint256 private fee = 0.1 * 10**18; // Rinkeby
     // uint256 private fee = 0.0001 * 10**18; // Mumbai
@@ -19,10 +19,10 @@ contract VRFBase is VRFConsumerBase, Ownable {
 
     constructor()
         VRFConsumerBase(
-            0xb3dCcb4Cf7a26f6cf6B120Cf5A73875B7BBc655B, // VRF Rinkeby
-            0x01BE23585060835E02B77ef475b0Cc51aA1e0709 // LINK Rinkeby
-            // 0x8C7382F9D8f56b33781fE506E897a4F1e2d17255, // VRF Mumabi
-            // 0x326C977E6efc84E512bB9C30f76E30c160eD06FB // LINK Mumbai
+            // 0xb3dCcb4Cf7a26f6cf6B120Cf5A73875B7BBc655B, // VRF Rinkeby
+            // 0x01BE23585060835E02B77ef475b0Cc51aA1e0709 // LINK Rinkeby
+            0x8C7382F9D8f56b33781fE506E897a4F1e2d17255, // VRF Mumabi
+            0x326C977E6efc84E512bB9C30f76E30c160eD06FB // LINK Mumbai
         )
     {}
 
